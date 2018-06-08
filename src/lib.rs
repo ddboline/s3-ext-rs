@@ -13,7 +13,7 @@ pub mod iter;
 use iter::{GetObjectIter, ObjectIter};
 pub mod error;
 use error::{S4Error, S4Result};
-pub mod upload;
+mod upload;
 
 use futures::stream::Stream;
 use rusoto_core::reactor::RequestDispatcher;
