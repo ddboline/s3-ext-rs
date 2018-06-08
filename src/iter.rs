@@ -96,8 +96,10 @@ use error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
 use rusoto_core::DispatchSignedRequest;
 use rusoto_credential::ProvideAwsCredentials;
-use rusoto_s3::{GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request,
-                Object, S3, S3Client};
+use rusoto_s3::{
+    GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3,
+    S3Client,
+};
 use std::mem;
 use std::vec::IntoIter;
 

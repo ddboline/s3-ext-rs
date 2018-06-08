@@ -1,6 +1,8 @@
 use rusoto_core::HttpDispatchError;
-use rusoto_s3::{CompleteMultipartUploadError, CreateMultipartUploadError, GetObjectError,
-                ListObjectsV2Error, PutObjectError, UploadPartError};
+use rusoto_s3::{
+    CompleteMultipartUploadError, CreateMultipartUploadError, GetObjectError, ListObjectsV2Error,
+    PutObjectError, UploadPartError,
+};
 use std::io::Error as IoError;
 
 pub type S4Result<T> = Result<T, S4Error>;

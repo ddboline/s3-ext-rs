@@ -9,8 +9,9 @@ mod common;
 use common::ReaderWithError;
 
 use rand::{Rng, SeedableRng, XorShiftRng};
-use rusoto_s3::{GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest,
-                S3};
+use rusoto_s3::{
+    GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
+};
 use s4::error::S4Error;
 use s4::S4;
 use std::fs::File;

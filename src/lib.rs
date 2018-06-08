@@ -19,8 +19,10 @@ use futures::stream::Stream;
 use rusoto_core::reactor::RequestDispatcher;
 use rusoto_core::{DispatchSignedRequest, Region};
 use rusoto_credential::{ProvideAwsCredentials, StaticProvider};
-use rusoto_s3::{CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
-                PutObjectRequest, S3, S3Client, StreamingBody};
+use rusoto_s3::{
+    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
+    PutObjectRequest, S3, S3Client, StreamingBody,
+};
 use std::convert::AsRef;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
