@@ -12,6 +12,7 @@ use rand::Rng;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
 use s4::S4;
+use std::env;
 
 #[test]
 fn main() {
@@ -21,9 +22,10 @@ fn main() {
 
     let access_key = "ANTN35UAENTS5UIAEATD".to_string();
     let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
+    let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
     let region = Region::Custom {
         name: "eu-west-1".to_string(),
-        endpoint: "http://localhost:9000".to_string(),
+        endpoint,
     };
     let client = s4::new_s3client_with_credentials(region, access_key, secret_key);
 

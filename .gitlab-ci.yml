@@ -1,0 +1,41 @@
+image: "rust:latest"
+
+services:
+- name: minio/minio
+  command: ['server', '/minio']
+  alias: minio
+
+variables:
+  RUST_BACKTRACE: '1'
+  QUICKCHECK_GENERATOR_SIZE: 1572864
+  S3_ENDPOINT: http://minio:9000
+
+  # used by minio service
+  MINIO_SECRET_KEY: TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur
+  MINIO_ACCESS_KEY: ANTN35UAENTS5UIAEATD
+  MINIO_DOMAIN: localhost
+
+.job_template: &template
+  script:
+  - rustc --version && cargo --version
+  - cargo test --all --verbose
+
+stable:
+  <<: *template
+
+beta:
+  <<: *template
+  before_script:
+  - rustup toolchain install beta
+  - rustup default beta
+
+nightly:
+  <<: *template
+  services:
+  - name: minio/minio:edge
+    command: ['server', '/minio']
+    alias: minio
+  before_script:
+  - rustup toolchain install nightly
+  - rustup default nightly
+  allow_failure: true

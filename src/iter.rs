@@ -17,6 +17,7 @@
 //! use rusoto_core::Region;
 //! use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3, S3Client};
 //! use s4::S4;
+//! use std::env;
 //!
 //! fn main() {
 //!     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
@@ -25,9 +26,10 @@
 //!
 //!     let access_key = "ANTN35UAENTS5UIAEATD".to_string();
 //!     let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
+//!     let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
 //!     let region = Region::Custom {
 //!         name: "eu-west-1".to_string(),
-//!         endpoint: "http://localhost:9000".to_string(),
+//!         endpoint,
 //!     };
 //!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key);
 //!
@@ -76,22 +78,17 @@
 //!
 //!     // iterate object and fetch content on the fly (sorted alphabetically)
 //!
-//!     let bodies: Vec<Vec<u8>> = client
+//!     let objects: Vec<(String, Vec<u8>)> = client
 //!         .iter_get_objects(&bucket)
-//!         .map(|obj| obj.body.unwrap().concat2().wait().unwrap())
+//!         .map(|(key, obj)| (key, obj.body.unwrap().concat2().wait().unwrap()))
 //!         .collect()
 //!         .expect("failed to fetch content");
 //!
-//!     assert_eq!(
-//!         bodies.as_slice(),
-//!         &[
-//!             b"object_00",
-//!             b"object_01",
-//!             b"object_02",
-//!             b"object_03",
-//!             b"object_04",
-//!         ]
-//!     );
+//!     for (i, (key, body)) in objects.iter().enumerate() {
+//!         let expected = format!("object_{:02}", i);
+//!         assert_eq!(key, &expected);
+//!         assert_eq!(body.as_slice(), expected.as_bytes());
+//!     }
 //! }
 //! ```
 

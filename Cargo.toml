@@ -3,14 +3,14 @@ name = "s4"
 description = "Simpler Simple Storage Service: highlevel API extensions for Rusoto's S3Client"
 version = "0.0.5"
 documentation = "https://docs.rs/s4"
-repository = "https://github.com/pgerber/s4"
+repository = "https://gitlab.com/pgerber/s4"
 authors = ["Peter Gerber <peter@arbitrary.ch>"]
 license = "LGPL-3.0+"
 readme = "README.md"
 keywords = ["AWS", "S3"]
 
 [badges]
-travis-ci = { repository = "pgerber/s4" }
+gitlab = { repository = "pgerber/s4" }
 
 [dependencies]
 derive-error = "0.0"

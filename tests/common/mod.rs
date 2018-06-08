@@ -16,13 +16,15 @@ use self::rusoto_core::Region;
 use self::rusoto_credential::{ProvideAwsCredentials, StaticProvider};
 use self::rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3, S3Client};
 use s4::new_s3client_with_credentials;
+use std::env;
 use std::io::{self, Read};
 
 pub fn create_test_bucket() -> (S3Client<StaticProvider>, String) {
+    let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
     let client = new_s3client_with_credentials(
         Region::Custom {
             name: "eu-west-1".to_owned(),
-            endpoint: "http://localhost:9000".to_owned(),
+            endpoint,
         },
         "ANTN35UAENTS5UIAEATD".to_owned(),
         "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_owned(),
