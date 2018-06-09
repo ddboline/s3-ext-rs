@@ -34,7 +34,7 @@ Most functionality is provided by the `S4` trait which is implemented for *Rusot
 
 ```
 docker run -d --rm -p 9000:9000 --env "MINIO_ACCESS_KEY=ANTN35UAENTS5UIAEATD" \
---env "MINIO_SECRET_KEY=TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur" #
+--env "MINIO_SECRET_KEY=TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur" \
 --env MINIO_DOMAIN=localhost minio/minio server /minio
 ```
 
