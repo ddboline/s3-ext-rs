@@ -228,20 +228,20 @@ fn upload_multipart_test_part_boundary() {
         println!("rng seed: {:?}", seed);
         let mut rng = XorShiftRng::from_seed(seed);
         let part_size = 5 * 1024 * 1024 + 1;
-        let size = part_size * part_count as u64;
+        let size = part_size * part_count;
 
         // `size` is multiple of `part_size` - 1 byte
-        assert!(upload_multipart_helper(&mut rng, part_size - 1, size));
+        assert!(upload_multipart_helper(&mut rng, part_size - 1, size as u64));
 
         // `size` is multiple of `part_size`
-        assert!(upload_multipart_helper(&mut rng, part_size, size));
+        assert!(upload_multipart_helper(&mut rng, part_size, size as u64));
 
         // `size` is multiple of `part_size` + 1 byte
-        assert!(upload_multipart_helper(&mut rng, part_size + 1, size));
+        assert!(upload_multipart_helper(&mut rng, part_size + 1, size as u64));
     }
 }
 
-fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: u64, obj_size: u64) -> bool {
+fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_size: u64) -> bool {
     common::init_logger();
     let (client, bucket) = common::create_test_bucket();
     let mut body = vec![0; obj_size as usize];

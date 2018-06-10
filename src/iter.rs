@@ -184,11 +184,11 @@ where
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         if let object @ Some(_) = self.objects.next() {
             Ok(object)
-        } else if !self.exhausted {
+        } else if self.exhausted {
+            Ok(None)
+        } else {
             self.next_objects()?;
             Ok(self.objects.next())
-        } else {
-            Ok(None)
         }
     }
 

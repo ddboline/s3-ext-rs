@@ -27,18 +27,13 @@ pub(crate) fn upload_multipart<P, D, R>(
     client: &S3Client<P, D>,
     source: &mut R,
     target: &PutObjectRequest,
-    part_size: u64,
+    part_size: usize,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
     P: ProvideAwsCredentials + 'static,
     D: DispatchSignedRequest + 'static,
     R: Read,
 {
-    assert!(
-        part_size <= usize::max_value() as u64,
-        "Part size exceeds usize::max()"
-    );
-
     let upload = client
         .create_multipart_upload(&CreateMultipartUploadRequest {
             acl: target.acl.to_owned(),
@@ -104,7 +99,7 @@ fn upload_multipart_needs_abort_on_error<P, D, R>(
     client: &S3Client<P, D>,
     source: &mut R,
     target: &PutObjectRequest,
-    part_size: u64,
+    part_size: usize,
     upload_id: &str,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
@@ -114,7 +109,7 @@ where
 {
     let mut parts = Vec::new();
     for part_number in 1.. {
-        let mut body = vec![0; part_size as usize];
+        let mut body = vec![0; part_size];
         let size = source.read(&mut body[..])?;
         if size == 0 {
             break;

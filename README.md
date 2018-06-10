@@ -30,7 +30,7 @@ Most functionality is provided by the `S4` trait which is implemented for *Rusot
 
 ## Running Tests
 
-#. Start Minio
+1. Start Minio
 
 ```
 docker run -d --rm -p 9000:9000 --env "MINIO_ACCESS_KEY=ANTN35UAENTS5UIAEATD" \
@@ -38,8 +38,8 @@ docker run -d --rm -p 9000:9000 --env "MINIO_ACCESS_KEY=ANTN35UAENTS5UIAEATD" \
 --env MINIO_DOMAIN=localhost minio/minio server /minio
 ```
 
-#. Run tests
+2. Run tests
 
 ```
-cargo test
+cargo test --all
 ```

@@ -1,4 +1,4 @@
-image: "rust:latest"
+image: rust:latest
 
 services:
 - name: minio/minio
@@ -18,24 +18,31 @@ variables:
 .job_template: &template
   script:
   - rustc --version && cargo --version
+  - cargo rustc -- -D warnings
   - cargo test --all --verbose
 
-stable:
+test:stable:
   <<: *template
 
-beta:
+test:beta:
   <<: *template
   before_script:
   - rustup toolchain install beta
   - rustup default beta
 
-nightly:
+test:nightly:
   <<: *template
+  image: rustlang/rust:nightly
   services:
   - name: minio/minio:edge
     command: ['server', '/minio']
     alias: minio
-  before_script:
-  - rustup toolchain install nightly
-  - rustup default nightly
+  allow_failure: true
+
+lint:nightly:
+  image: rustlang/rust:nightly
+  script:
+  - rustc --version && cargo --version
+  - cargo install clippy
+  - cargo clippy -- -D clippy -D clippy_pedantic -D warnings
   allow_failure: true

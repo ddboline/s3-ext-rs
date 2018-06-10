@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "cargo-clippy", allow(stutter))]
+
 #[macro_use]
 extern crate derive_error;
 extern crate fallible_iterator;
@@ -8,6 +10,7 @@ extern crate rusoto_core;
 extern crate rusoto_credential;
 extern crate rusoto_s3;
 extern crate tokio_io;
+
 
 pub mod iter;
 use iter::{GetObjectIter, ObjectIter};
@@ -77,7 +80,7 @@ where
         &self,
         source: F,
         target: &PutObjectRequest,
-        part_size: u64,
+        part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
         F: AsRef<Path>;
@@ -109,7 +112,7 @@ where
         &self,
         source: &mut R,
         target: &PutObjectRequest,
-        part_size: u64,
+        part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
         R: Read;
@@ -174,7 +177,7 @@ where
         &self,
         source: F,
         target: &PutObjectRequest,
-        part_size: u64,
+        part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
         F: AsRef<Path>,
@@ -211,7 +214,7 @@ where
         &self,
         mut source: &mut R,
         target: &PutObjectRequest,
-        part_size: u64,
+        part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
         R: Read,
@@ -244,7 +247,7 @@ fn copy<W>(src: &mut StreamingBody, dest: &mut W) -> S4Result<()>
 where
     W: Write,
 {
-    let src = src.take(524_288).wait();
+    let src = src.take(512 * 1024).wait();
     for chunk in src {
         dest.write_all(chunk?.as_mut_slice())?;
     }
