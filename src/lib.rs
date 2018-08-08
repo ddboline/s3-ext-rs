@@ -11,7 +11,6 @@ extern crate rusoto_credential;
 extern crate rusoto_s3;
 extern crate tokio_io;
 
-
 pub mod iter;
 use iter::{GetObjectIter, ObjectIter};
 pub mod error;
@@ -19,8 +18,8 @@ use error::{S4Error, S4Result};
 mod upload;
 
 use futures::stream::Stream;
-use rusoto_core::Region;
 use rusoto_core::request::{HttpClient, TlsError};
+use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
     CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
@@ -46,11 +45,7 @@ pub fn new_s3client_with_credentials(
 
 pub trait S4 {
     /// Get object and write it to file `target`
-    fn download_to_file<F>(
-        &self,
-        source: GetObjectRequest,
-        target: F,
-    ) -> S4Result<GetObjectOutput>
+    fn download_to_file<F>(&self, source: GetObjectRequest, target: F) -> S4Result<GetObjectOutput>
     where
         F: AsRef<Path>;
 
@@ -179,11 +174,7 @@ impl<'a> S4 for S3Client {
         upload::upload_multipart(&self, &mut source, target, part_size)
     }
 
-    fn download<W>(
-        &self,
-        source: GetObjectRequest,
-        mut target: &mut W,
-    ) -> S4Result<GetObjectOutput>
+    fn download<W>(&self, source: GetObjectRequest, mut target: &mut W) -> S4Result<GetObjectOutput>
     where
         W: Write,
     {
