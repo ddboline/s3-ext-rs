@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#![cfg_attr(feature = "cargo-clippy", allow(default_trait_access))]
 
 #[macro_use]
 extern crate derive_error;

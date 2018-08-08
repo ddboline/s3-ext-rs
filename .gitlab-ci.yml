@@ -43,6 +43,6 @@ lint:nightly:
   image: rustlang/rust:nightly
   script:
   - rustc --version && cargo --version
-  - cargo install clippy
+  - rustup component add clippy-preview
   - cargo clippy -- -D clippy -D clippy_pedantic -D warnings
   allow_failure: true
