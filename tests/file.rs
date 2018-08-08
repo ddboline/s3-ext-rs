@@ -26,7 +26,7 @@ fn target_file_already_exists() {
     common::put_object(&client, &bucket, key, vec![]);
 
     let result = client.download_to_file(
-        &GetObjectRequest {
+        GetObjectRequest {
             bucket: bucket.clone(),
             key: key.to_owned(),
             ..Default::default()
@@ -47,7 +47,7 @@ fn target_file_not_created_when_object_does_not_exist() {
     let file = dir.path().join("no_such_file");
 
     let result = client.download_to_file(
-        &GetObjectRequest {
+        GetObjectRequest {
             bucket: bucket.clone(),
             key: "no_such_key".to_owned(),
             ..Default::default()
@@ -76,7 +76,7 @@ quickcheck! {
 
         let resp = client
             .download_to_file(
-                &GetObjectRequest {
+                GetObjectRequest {
                     bucket: bucket.clone(),
                     key: key.to_owned(),
                     ..Default::default()
@@ -107,7 +107,7 @@ quickcheck! {
 
         let resp = client
             .download(
-                &GetObjectRequest {
+                GetObjectRequest {
                     bucket: bucket.clone(),
                     key: key.to_owned(),
                     ..Default::default()
@@ -133,7 +133,7 @@ fn download_large_object() {
 
     let resp = client
         .download(
-            &GetObjectRequest {
+            GetObjectRequest {
                 bucket: bucket.clone(),
                 key: key.to_owned(),
                 ..Default::default()
@@ -279,7 +279,7 @@ quickcheck! {
         }
 
         // all uploads must have been aborted
-        let parts = client.list_multipart_uploads(&ListMultipartUploadsRequest {
+        let parts = client.list_multipart_uploads(ListMultipartUploadsRequest {
             bucket: bucket.to_owned(),
             ..Default::default()
         }).sync().unwrap();

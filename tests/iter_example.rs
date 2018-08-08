@@ -27,12 +27,12 @@ fn main() {
         name: "eu-west-1".to_string(),
         endpoint,
     };
-    let client = s4::new_s3client_with_credentials(region, access_key, secret_key);
+    let client = s4::new_s3client_with_credentials(region, access_key, secret_key).unwrap();
 
     // create bucket
 
     client
-        .create_bucket(&CreateBucketRequest {
+        .create_bucket(CreateBucketRequest {
             bucket: bucket.clone(),
             ..Default::default()
         })
@@ -43,10 +43,10 @@ fn main() {
 
     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
         client
-            .put_object(&PutObjectRequest {
+            .put_object(PutObjectRequest {
                 bucket: bucket.clone(),
                 key: obj.to_string(),
-                body: Some(obj.as_bytes().to_vec()),
+                body: Some(obj.as_bytes().to_vec().into()),
                 ..Default::default()
             })
             .sync()

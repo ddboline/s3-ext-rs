@@ -19,9 +19,9 @@ use error::{S4Error, S4Result};
 mod upload;
 
 use futures::stream::Stream;
-use rusoto_core::reactor::RequestDispatcher;
-use rusoto_core::{DispatchSignedRequest, Region};
-use rusoto_credential::{ProvideAwsCredentials, StaticProvider};
+use rusoto_core::Region;
+use rusoto_core::request::{HttpClient, TlsError};
+use rusoto_credential::StaticProvider;
 use rusoto_s3::{
     CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
     PutObjectRequest, S3, S3Client, StreamingBody,
@@ -36,23 +36,19 @@ pub fn new_s3client_with_credentials(
     region: Region,
     access_key: String,
     secret_key: String,
-) -> S3Client<StaticProvider> {
-    S3Client::new(
-        RequestDispatcher::default(),
+) -> Result<S3Client, TlsError> {
+    Ok(S3Client::new_with(
+        HttpClient::new()?,
         StaticProvider::new_minimal(access_key, secret_key),
         region,
-    )
+    ))
 }
 
-pub trait S4<P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
+pub trait S4 {
     /// Get object and write it to file `target`
     fn download_to_file<F>(
         &self,
-        source: &GetObjectRequest,
+        source: GetObjectRequest,
         target: F,
     ) -> S4Result<GetObjectOutput>
     where
@@ -86,7 +82,7 @@ where
         F: AsRef<Path>;
 
     /// Get object and write it to `target`
-    fn download<W>(&self, source: &GetObjectRequest, target: &mut W) -> S4Result<GetObjectOutput>
+    fn download<W>(&self, source: GetObjectRequest, target: &mut W) -> S4Result<GetObjectOutput>
     where
         W: Write;
 
@@ -120,32 +116,28 @@ where
     /// Iterator over all objects
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_objects(&self, bucket: &str) -> ObjectIter<P, D>;
+    fn iter_objects(&self, bucket: &str) -> ObjectIter;
 
     /// Iterator over objects with given `prefix`
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectIter<P, D>;
+    fn iter_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectIter;
 
     /// Iterator over all objects; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter<P, D>;
+    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter;
 
     /// Iterator over objects with given `prefix`; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter<P, D>;
+    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
 }
 
-impl<'a, P, D> S4<P, D> for S3Client<P, D>
-where
-    P: 'static + ProvideAwsCredentials,
-    D: 'static + DispatchSignedRequest,
-{
+impl<'a> S4 for S3Client {
     fn download_to_file<F>(
         &self,
-        source: &GetObjectRequest,
+        source: GetObjectRequest,
         target: F,
     ) -> Result<GetObjectOutput, S4Error>
     where
@@ -189,7 +181,7 @@ where
 
     fn download<W>(
         &self,
-        source: &GetObjectRequest,
+        source: GetObjectRequest,
         mut target: &mut W,
     ) -> S4Result<GetObjectOutput>
     where
@@ -223,22 +215,22 @@ where
     }
 
     #[inline]
-    fn iter_objects(&self, bucket: &str) -> ObjectIter<P, D> {
+    fn iter_objects(&self, bucket: &str) -> ObjectIter {
         ObjectIter::new(self, bucket, None)
     }
 
     #[inline]
-    fn iter_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectIter<P, D> {
+    fn iter_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectIter {
         ObjectIter::new(self, bucket, Some(prefix))
     }
 
     #[inline]
-    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter<P, D> {
+    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter {
         GetObjectIter::new(self, bucket, None)
     }
 
     #[inline]
-    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter<P, D> {
+    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter {
         GetObjectIter::new(self, bucket, Some(prefix))
     }
 }

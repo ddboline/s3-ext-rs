@@ -31,12 +31,12 @@
 //!         name: "eu-west-1".to_string(),
 //!         endpoint,
 //!     };
-//!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key);
+//!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key).unwrap();
 //!
 //!     // create bucket
 //!
 //!     client
-//!         .create_bucket(&CreateBucketRequest {
+//!         .create_bucket(CreateBucketRequest {
 //!             bucket: bucket.clone(),
 //!             ..Default::default()
 //!         })
@@ -47,10 +47,10 @@
 //!
 //!     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
 //!         client
-//!             .put_object(&PutObjectRequest {
+//!             .put_object(PutObjectRequest {
 //!                 bucket: bucket.clone(),
 //!                 key: obj.to_string(),
-//!                 body: Some(obj.as_bytes().to_vec()),
+//!                 body: Some(obj.as_bytes().to_vec().into()),
 //!                 ..Default::default()
 //!             })
 //!             .sync()
@@ -94,8 +94,6 @@
 
 use error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
-use rusoto_core::DispatchSignedRequest;
-use rusoto_credential::ProvideAwsCredentials;
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3,
     S3Client,
@@ -104,22 +102,14 @@ use std::mem;
 use std::vec::IntoIter;
 
 /// Iterator over all objects or objects with a given prefix
-pub struct ObjectIter<'a, P, D>
-where
-    P: 'static + ProvideAwsCredentials,
-    D: 'static + DispatchSignedRequest,
-{
-    client: &'a S3Client<P, D>,
+pub struct ObjectIter<'a> {
+    client: &'a S3Client,
     request: ListObjectsV2Request,
     objects: IntoIter<Object>,
     exhausted: bool,
 }
 
-impl<'a, P, D> Clone for ObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
+impl<'a> Clone for ObjectIter<'a> {
     fn clone(&self) -> Self {
         ObjectIter {
             client: self.client,
@@ -130,12 +120,8 @@ where
     }
 }
 
-impl<'a, P, D> ObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
-    pub(crate) fn new(client: &'a S3Client<P, D>, bucket: &str, prefix: Option<&str>) -> Self {
+impl<'a> ObjectIter<'a> {
+    pub(crate) fn new(client: &'a S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         let request = ListObjectsV2Request {
             bucket: bucket.to_owned(),
             max_keys: Some(1000),
@@ -152,7 +138,7 @@ where
     }
 
     fn next_objects(&mut self) -> Result<(), ListObjectsV2Error> {
-        let resp = self.client.list_objects_v2(&self.request).sync()?;
+        let resp = self.client.list_objects_v2(self.request.clone()).sync()?;
         self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
         match resp.next_continuation_token {
             next @ Some(_) => self.request.continuation_token = next,
@@ -173,11 +159,7 @@ where
     }
 }
 
-impl<'a, P, D> FallibleIterator for ObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
+impl<'a> FallibleIterator for ObjectIter<'a> {
     type Item = Object;
     type Error = ListObjectsV2Error;
 
@@ -221,20 +203,12 @@ where
 /// Iterator retrieving all objects or objects with a given prefix
 ///
 /// The iterator yields tuples of `(key, object)`.
-pub struct GetObjectIter<'a, P, D>
-where
-    P: 'static + ProvideAwsCredentials,
-    D: 'static + DispatchSignedRequest,
-{
-    inner: ObjectIter<'a, P, D>,
+pub struct GetObjectIter<'a> {
+    inner: ObjectIter<'a>,
     request: GetObjectRequest,
 }
 
-impl<'a, P, D> Clone for GetObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
+impl<'a> Clone for GetObjectIter<'a> {
     fn clone(&self) -> Self {
         GetObjectIter {
             inner: self.inner.clone(),
@@ -243,12 +217,8 @@ where
     }
 }
 
-impl<'a, P, D> GetObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
-    pub(crate) fn new(client: &'a S3Client<P, D>, bucket: &str, prefix: Option<&str>) -> Self {
+impl<'a> GetObjectIter<'a> {
+    pub(crate) fn new(client: &'a S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         let request = GetObjectRequest {
             bucket: bucket.to_owned(),
             ..Default::default()
@@ -266,7 +236,7 @@ where
                 self.request.key = object
                     .key
                     .ok_or_else(|| S4Error::Other("response is missing key"))?;
-                match self.inner.client.get_object(&self.request).sync() {
+                match self.inner.client.get_object(self.request.clone()).sync() {
                     Ok(o) => {
                         let key = mem::replace(&mut self.request.key, String::new());
                         Ok(Some((key, o)))
@@ -279,11 +249,7 @@ where
     }
 }
 
-impl<'a, P, D> FallibleIterator for GetObjectIter<'a, P, D>
-where
-    P: ProvideAwsCredentials,
-    D: DispatchSignedRequest,
-{
+impl<'a> FallibleIterator for GetObjectIter<'a> {
     type Item = (String, GetObjectOutput);
     type Error = S4Error;
 

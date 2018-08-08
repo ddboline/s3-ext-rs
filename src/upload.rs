@@ -1,5 +1,4 @@
 use error::{S4Error, S4Result};
-use rusoto_core::{DispatchSignedRequest, ProvideAwsCredentials};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,
@@ -7,35 +6,31 @@ use rusoto_s3::{
 };
 use std::io::Read;
 
-pub(crate) fn upload<P, D, R>(
-    client: &S3Client<P, D>,
+pub(crate) fn upload<R>(
+    client: &S3Client,
     source: &mut R,
     mut target: PutObjectRequest,
 ) -> S4Result<PutObjectOutput>
 where
-    P: ProvideAwsCredentials + 'static,
-    D: DispatchSignedRequest + 'static,
     R: Read,
 {
     let mut content = Vec::new();
     source.read_to_end(&mut content)?;
-    target.body = Some(content);
-    client.put_object(&target).sync().map_err(|e| e.into())
+    target.body = Some(content.into());
+    client.put_object(target).sync().map_err(|e| e.into())
 }
 
-pub(crate) fn upload_multipart<P, D, R>(
-    client: &S3Client<P, D>,
+pub(crate) fn upload_multipart<R>(
+    client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
     part_size: usize,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    P: ProvideAwsCredentials + 'static,
-    D: DispatchSignedRequest + 'static,
     R: Read,
 {
     let upload = client
-        .create_multipart_upload(&CreateMultipartUploadRequest {
+        .create_multipart_upload(CreateMultipartUploadRequest {
             acl: target.acl.to_owned(),
             bucket: target.bucket.to_owned(),
             cache_control: target.cache_control.to_owned(),
@@ -79,7 +74,7 @@ where
                 upload_id
             );
             if let Err(e) = client
-                .abort_multipart_upload(&AbortMultipartUploadRequest {
+                .abort_multipart_upload(AbortMultipartUploadRequest {
                     bucket: target.bucket.to_owned(),
                     key: target.key.to_owned(),
                     request_payer: target.request_payer.to_owned(),
@@ -95,16 +90,14 @@ where
 }
 
 // Upload needs to be aborted if this function fails
-fn upload_multipart_needs_abort_on_error<P, D, R>(
-    client: &S3Client<P, D>,
+fn upload_multipart_needs_abort_on_error<R>(
+    client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
     part_size: usize,
     upload_id: &str,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    P: ProvideAwsCredentials + 'static,
-    D: DispatchSignedRequest + 'static,
     R: Read,
 {
     let mut parts = Vec::new();
@@ -117,8 +110,8 @@ where
         body.truncate(size);
 
         let part = client
-            .upload_part(&UploadPartRequest {
-                body: Some(body),
+            .upload_part(UploadPartRequest {
+                body: Some(body.into()),
                 bucket: target.bucket.clone(),
                 content_length: None,
                 content_md5: None,
@@ -139,7 +132,7 @@ where
     }
 
     client
-        .complete_multipart_upload(&CompleteMultipartUploadRequest {
+        .complete_multipart_upload(CompleteMultipartUploadRequest {
             bucket: target.bucket.to_owned(),
             key: target.key.to_owned(),
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
