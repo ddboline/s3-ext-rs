@@ -8,7 +8,9 @@ extern crate tempdir;
 mod common;
 use common::ReaderWithError;
 
-use rand::{Rng, SeedableRng, XorShiftRng};
+use quickcheck::RngCore;
+use rand::{FromEntropy, Rng, SeedableRng, XorShiftRng};
+use rand::rngs::SmallRng;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };
@@ -126,7 +128,7 @@ fn download_large_object() {
     let (client, bucket) = common::create_test_bucket();
     let key = "abc/def/ghi";
     let mut data = vec![0; 104_857_601];
-    rand::weak_rng().fill_bytes(data.as_mut());
+    SmallRng::from_entropy().fill_bytes(data.as_mut());
     let mut target = Vec::new();
 
     common::put_object(&client, &bucket, key, data.clone());

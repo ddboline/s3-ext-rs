@@ -8,7 +8,7 @@ extern crate s4;
 use fallible_iterator::FallibleIterator;
 use futures::stream::Stream;
 use futures::Future;
-use rand::Rng;
+use rand::RngCore;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
 use s4::S4;
