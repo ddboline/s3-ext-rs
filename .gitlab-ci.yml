@@ -39,10 +39,8 @@ test:nightly:
     alias: minio
   allow_failure: true
 
-lint:nightly:
-  image: rustlang/rust:nightly
+clippy:
   script:
   - rustc --version && cargo --version
-  - rustup component add clippy-preview
-  - cargo clippy -- -D clippy -D clippy_pedantic -D warnings
-  allow_failure: true
+  - rustup component add clippy
+  - cargo clippy -- -D clippy::all -D clippy::pedantic -D warnings

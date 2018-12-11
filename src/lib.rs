@@ -1,3 +1,6 @@
+#![allow(clippy::default_trait_access)]
+#![allow(clippy::stutter)]
+
 #[macro_use]
 extern crate derive_error;
 extern crate fallible_iterator;
