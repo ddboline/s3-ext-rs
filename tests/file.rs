@@ -1,16 +1,18 @@
 #[macro_use]
 extern crate quickcheck;
 extern crate rand;
+extern crate rand_xorshift;
 extern crate rusoto_s3;
 extern crate s4;
 extern crate tempdir;
 
 mod common;
-use common::ReaderWithError;
+use crate::common::ReaderWithError;
 
 use quickcheck::RngCore;
-use rand::{FromEntropy, Rng, SeedableRng, XorShiftRng};
+use rand::{FromEntropy, Rng, SeedableRng};
 use rand::rngs::SmallRng;
+use rand_xorshift::XorShiftRng;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };

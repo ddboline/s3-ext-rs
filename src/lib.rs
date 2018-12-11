@@ -10,9 +10,9 @@ extern crate rusoto_s3;
 extern crate tokio_io;
 
 pub mod iter;
-use iter::{GetObjectIter, ObjectIter};
+use crate::iter::{GetObjectIter, ObjectIter};
 pub mod error;
-use error::{S4Error, S4Result};
+use crate::error::{S4Error, S4Result};
 mod upload;
 
 use futures::stream::Stream;

@@ -1,4 +1,4 @@
-use error::{S4Error, S4Result};
+use crate::error::{S4Error, S4Result};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,

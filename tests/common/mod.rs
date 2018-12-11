@@ -87,7 +87,7 @@ impl Read for ReaderWithError {
                 "explicit, unconditional error",
             ));
         }
-        for mut i in buf.iter_mut() {
+        for i in buf.iter_mut() {
             *i = 0;
         }
         self.abort_after -= buf.len();

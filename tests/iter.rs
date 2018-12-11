@@ -4,7 +4,7 @@ extern crate rusoto_s3;
 extern crate s4;
 
 mod common;
-use common::*;
+use crate::common::*;
 
 use fallible_iterator::FallibleIterator;
 use futures::{Future, Stream};

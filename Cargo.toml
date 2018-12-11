@@ -8,6 +8,7 @@ authors = ["Peter Gerber <peter@arbitrary.ch>"]
 license = "LGPL-3.0+"
 readme = "README.md"
 keywords = ["AWS", "S3"]
+edition = "2018"
 
 [badges]
 gitlab = { repository = "pgerber/s4" }
@@ -17,13 +18,14 @@ derive-error = "0.0"
 log = "0.4"
 fallible-iterator = "0.1"
 futures = "0.1"
-rusoto_core = "0.35"
-rusoto_credential = "0.14"
-rusoto_s3 = "0.35"
+rusoto_core = "0.36"
+rusoto_credential = "0.15"
+rusoto_s3 = "0.36"
 tokio-io = "0.1"
 
 [dev-dependencies]
 tempdir = "0.3"
-rand = "0.5"
-env_logger = "0.5"
+rand = "0.6"
+rand_xorshift = "0.1"
+env_logger = "0.6"
 quickcheck = "0.7"
