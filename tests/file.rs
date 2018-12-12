@@ -10,8 +10,8 @@ mod common;
 use crate::common::ReaderWithError;
 
 use quickcheck::RngCore;
-use rand::{FromEntropy, Rng, SeedableRng};
 use rand::rngs::SmallRng;
+use rand::{FromEntropy, Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,

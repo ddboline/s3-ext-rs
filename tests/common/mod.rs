@@ -13,7 +13,7 @@ use self::futures::Future;
 use self::rand::distributions::Alphanumeric;
 use self::rand::Rng;
 use self::rusoto_core::Region;
-use self::rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3, S3Client};
+use self::rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3Client, S3};
 use s4::new_s3client_with_credentials;
 use std::env;
 use std::io::{self, Read};
@@ -27,7 +27,8 @@ pub fn create_test_bucket() -> (S3Client, String) {
         },
         "ANTN35UAENTS5UIAEATD".to_owned(),
         "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_owned(),
-    ).unwrap();
+    )
+    .unwrap();
     let bucket: String = self::rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(63)
