@@ -22,6 +22,7 @@ variables:
   - cargo test --all --verbose
 
 rustfmt:
+  services: []
   before_script:
   - rustup component add rustfmt
   script:
@@ -46,6 +47,7 @@ test:nightly:
   allow_failure: true
 
 clippy:
+  services: []
   script:
   - rustc --version && cargo --version
   - rustup component add clippy
