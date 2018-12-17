@@ -1,6 +1,6 @@
 [package]
 name = "s4"
-description = "Simpler Simple Storage Service: highlevel API extensions for Rusoto's S3Client"
+description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
 version = "0.0.10"
 documentation = "https://docs.rs/s4"
 repository = "https://gitlab.com/pgerber/s4"

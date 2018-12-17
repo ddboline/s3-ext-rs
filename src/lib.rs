@@ -1,11 +1,11 @@
-//! Simpler Simple Storage Service: highlevel API extensions for Rusoto's S3Client
+//! Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client
 //!
 //! # TLS Support
 //!
 //! For TLS support [`rustls`](https://crates.io/crates/rustls) is used by default.
 //!
 //! Alternatively, [`native-tls`](https://crates.io/crates/native-tls) can be used by
-//! disabling the default features and enabling `native-tls` feature.
+//! disabling the default features and enabling the `native-tls` feature.
 //!
 //! For instance, like this:
 //!
