@@ -1,4 +1,4 @@
-//! Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client
+//! Simpler Simple Storage Service: high-level API extensions for Rusoto's `S3Client`
 //!
 //! # TLS Support
 //!
