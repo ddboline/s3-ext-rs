@@ -31,6 +31,11 @@ rustfmt:
 test:stable:
   <<: *template
 
+test:native-tls:
+  script:
+  - rustc --version && cargo --version
+  - cargo test --all --verbose --no-default-features --features native-tls
+
 test:beta:
   <<: *template
   before_script:
