@@ -189,10 +189,7 @@ impl<'a> FallibleIterator for ObjectIter<'a> {
     }
 
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        while self.objects.len() <= n {
-            if self.exhausted {
-                return Ok(None);
-            }
+        while self.objects.len() <= n && !self.exhausted {
             n -= self.objects.len();
             self.next_objects()?;
         }
