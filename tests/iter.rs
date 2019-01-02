@@ -180,11 +180,11 @@ fn iter_get_objects_nth() {
     }
 
     let mut iter = client.iter_get_objects(&bucket);
-    assert_key_and_body(iter.nth(0), b"0001");
-    assert_key_and_body(iter.nth(997), b"0999");
-    assert_key_and_body(iter.nth(0), b"1000");
-    assert_key_and_body(iter.nth(0), b"1001");
-    assert_key_and_body(iter.nth(0), b"1002");
+    assert_key_and_body(iter.nth(0), "0001");
+    assert_key_and_body(iter.nth(997), "0999");
+    assert_key_and_body(iter.nth(0), "1000");
+    assert_key_and_body(iter.nth(0), "1001");
+    assert_key_and_body(iter.nth(0), "1002");
     assert!(iter.nth(0).unwrap().is_none());
 }
 
@@ -225,14 +225,14 @@ fn iter_get_objects_last() {
         put_object(&client, &bucket, &i, i.clone().into_bytes());
     }
 
-    assert_key_and_body(client.iter_get_objects(&bucket).last(), b"1001");
+    assert_key_and_body(client.iter_get_objects(&bucket).last(), "1001");
 }
 
-fn assert_key_and_body(output: S4Result<Option<(String, GetObjectOutput)>>, expected: &[u8]) {
+fn assert_key_and_body(output: S4Result<Option<(String, GetObjectOutput)>>, expected: &str) {
     let (key, object) = output.unwrap().unwrap();
 
     let body = object.body.unwrap().concat2().wait().unwrap();
 
-    assert_eq!(key.as_bytes(), expected);
-    assert_eq!(body, expected);
+    assert_eq!(key, expected);
+    assert_eq!(body, expected.as_bytes());
 }
