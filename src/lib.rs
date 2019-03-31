@@ -18,7 +18,7 @@
 //! ```
 
 #![allow(clippy::default_trait_access)]
-#![allow(clippy::stutter)]
+#![allow(clippy::module_name_repetitions)]
 
 #[macro_use]
 extern crate derive_error;
