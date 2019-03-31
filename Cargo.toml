@@ -16,11 +16,11 @@ gitlab = { repository = "pgerber/s4" }
 [dependencies]
 derive-error = "0.0"
 log = "0.4"
-fallible-iterator = "0.1"
+fallible-iterator = "0.2"
 futures = "0.1"
-rusoto_core = { version = "0.36", default_features = false }
-rusoto_credential = "0.15"
-rusoto_s3 = { version = "0.36", default_features = false }
+rusoto_core = { version = "0.37", default_features = false }
+rusoto_credential = "0.16"
+rusoto_s3 = { version = "0.37", default_features = false }
 tokio-io = "0.1"
 
 [dev-dependencies]
@@ -28,7 +28,7 @@ tempdir = "0.3"
 rand = "0.6"
 rand_xorshift = "0.1"
 env_logger = "0.6"
-quickcheck = "0.7"
+quickcheck = "0.8"
 
 [features]
 default = ["rustls"]
