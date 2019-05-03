@@ -21,7 +21,7 @@ use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
     CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
-    PutObjectRequest, S3, S3Client, StreamingBody,
+    PutObjectRequest, S3Client, StreamingBody, S3,
 };
 use std::convert::AsRef;
 use std::fs::{File, OpenOptions};

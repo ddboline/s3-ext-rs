@@ -9,8 +9,8 @@ mod common;
 use common::ReaderWithError;
 
 use quickcheck::RngCore;
-use rand::{FromEntropy, Rng, SeedableRng, XorShiftRng};
 use rand::rngs::SmallRng;
+use rand::{FromEntropy, Rng, SeedableRng, XorShiftRng};
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };

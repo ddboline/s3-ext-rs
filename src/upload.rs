@@ -2,7 +2,7 @@ use error::{S4Error, S4Result};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,
-    PutObjectRequest, S3, S3Client, UploadPartRequest,
+    PutObjectRequest, S3Client, UploadPartRequest, S3,
 };
 use std::io::Read;
 
