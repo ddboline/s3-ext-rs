@@ -20,6 +20,7 @@
 #![allow(clippy::default_trait_access)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::redundant_closure)]
+#![allow(clippy::redundant_closure_for_method_calls)]
 
 #[macro_use]
 extern crate derive_error;
