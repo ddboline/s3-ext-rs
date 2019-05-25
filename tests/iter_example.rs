@@ -76,7 +76,7 @@ fn main() {
 
     let bodies: Vec<_> = client
         .iter_get_objects(&bucket)
-        .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap())))
+        .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap().to_vec())))
         .collect()
         .expect("failed to fetch content");
 

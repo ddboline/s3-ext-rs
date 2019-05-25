@@ -80,7 +80,7 @@
 //!
 //!     let objects: Vec<(String, Vec<u8>)> = client
 //!         .iter_get_objects(&bucket)
-//!         .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap())))
+//!         .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap().to_vec())))
 //!         .collect()
 //!         .expect("failed to fetch content");
 //!
@@ -92,6 +92,7 @@
 //! }
 //! ```
 
+use rusoto_core::{RusotoError, RusotoResult};
 use crate::error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
 use rusoto_s3::{
@@ -137,7 +138,7 @@ impl<'a> ObjectIter<'a> {
         }
     }
 
-    fn next_objects(&mut self) -> Result<(), ListObjectsV2Error> {
+    fn next_objects(&mut self) -> RusotoResult<(), ListObjectsV2Error> {
         let resp = self.client.list_objects_v2(self.request.clone()).sync()?;
         self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
         match resp.next_continuation_token {
@@ -147,7 +148,7 @@ impl<'a> ObjectIter<'a> {
         Ok(())
     }
 
-    fn last_internal(&mut self) -> Result<Option<Object>, ListObjectsV2Error> {
+    fn last_internal(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
         let mut objects = mem::replace(&mut self.objects, Vec::new().into_iter());
         while !self.exhausted {
             self.next_objects()?;
@@ -161,7 +162,7 @@ impl<'a> ObjectIter<'a> {
 
 impl<'a> FallibleIterator for ObjectIter<'a> {
     type Item = Object;
-    type Error = ListObjectsV2Error;
+    type Error = RusotoError<ListObjectsV2Error>;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         if let object @ Some(_) = self.objects.next() {

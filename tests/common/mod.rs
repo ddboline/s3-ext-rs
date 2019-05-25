@@ -67,7 +67,7 @@ pub fn get_body(client: &S3Client, bucket: &str, key: &str) -> Vec<u8> {
         })
         .sync()
         .unwrap();
-    object.body.unwrap().concat2().wait().unwrap()
+    object.body.unwrap().concat2().wait().unwrap().to_vec()
 }
 
 pub fn init_logger() {

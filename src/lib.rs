@@ -19,6 +19,7 @@
 
 #![allow(clippy::default_trait_access)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::redundant_closure)]
 
 #[macro_use]
 extern crate derive_error;
@@ -37,7 +38,6 @@ pub mod error;
 use crate::error::{S4Error, S4Result};
 mod upload;
 
-use futures::stream::Stream;
 use rusoto_core::request::{HttpClient, TlsError};
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
@@ -47,7 +47,7 @@ use rusoto_s3::{
 };
 use std::convert::AsRef;
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io;
 use std::path::Path;
 
 /// Create client using given static access/secret keys
@@ -99,7 +99,7 @@ pub trait S4 {
     /// Get object and write it to `target`
     fn download<W>(&self, source: GetObjectRequest, target: &mut W) -> S4Result<GetObjectOutput>
     where
-        W: Write;
+        W: io::Write;
 
     /// Read `source` and upload it to S3
     ///
@@ -110,7 +110,7 @@ pub trait S4 {
     /// * The full content of `source` is copied into memory.
     fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
     where
-        R: Read;
+        R: io::Read;
 
     /// Read `source` and upload it to S3 using multi-part upload
     ///
@@ -126,7 +126,7 @@ pub trait S4 {
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        R: Read;
+        R: io::Read;
 
     /// Iterator over all objects
     ///
@@ -160,12 +160,12 @@ impl<'a> S4 for S3Client {
     {
         debug!("downloading to file {:?}", target.as_ref());
         let mut resp = self.get_object(source).sync()?;
-        let mut body = resp.body.take().expect("no body");
+        let body = resp.body.take().expect("no body");
         let mut target = OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(target)?;
-        copy(&mut body, &mut target)?;
+        copy(body, &mut target)?;
         Ok(resp)
     }
 
@@ -196,18 +196,18 @@ impl<'a> S4 for S3Client {
 
     fn download<W>(&self, source: GetObjectRequest, mut target: &mut W) -> S4Result<GetObjectOutput>
     where
-        W: Write,
+        W: io::Write,
     {
         let mut resp = self.get_object(source).sync()?;
-        let mut body = resp.body.take().expect("no body");
-        copy(&mut body, &mut target)?;
+        let body = resp.body.take().expect("no body");
+        copy(body, &mut target)?;
         Ok(resp)
     }
 
     #[inline]
     fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
     where
-        R: Read,
+        R: io::Read,
     {
         upload::upload(&self, source, target)
     }
@@ -220,7 +220,7 @@ impl<'a> S4 for S3Client {
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        R: Read,
+        R: io::Read,
     {
         upload::upload_multipart(&self, &mut source, target, part_size)
     }
@@ -246,13 +246,10 @@ impl<'a> S4 for S3Client {
     }
 }
 
-fn copy<W>(src: &mut StreamingBody, dest: &mut W) -> S4Result<()>
+fn copy<W>(src: StreamingBody, dest: &mut W) -> S4Result<()>
 where
-    W: Write,
+    W: io::Write,
 {
-    let src = src.take(512 * 1024).wait();
-    for chunk in src {
-        dest.write_all(chunk?.as_mut_slice())?;
-    }
+    io::copy(&mut src.into_blocking_read(), dest)?;
     Ok(())
 }

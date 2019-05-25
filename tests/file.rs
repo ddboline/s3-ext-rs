@@ -13,6 +13,7 @@ use quickcheck::RngCore;
 use rand::rngs::SmallRng;
 use rand::{FromEntropy, Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
+use rusoto_core::RusotoError;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };
@@ -60,7 +61,7 @@ fn target_file_not_created_when_object_does_not_exist() {
     );
 
     match result {
-        Err(S4Error::GetObjectError(GetObjectError::NoSuchKey(_))) => (),
+        Err(S4Error::GetObjectError(RusotoError::Service(GetObjectError::NoSuchKey(_)))) => (),
         e => panic!("unexpected result: {:?}", e),
     }
     assert!(

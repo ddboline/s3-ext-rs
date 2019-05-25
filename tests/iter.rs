@@ -164,7 +164,7 @@ fn iter_get_objects() {
     let mut iter = client.iter_get_objects(&bucket);
     for i in (1..1004).map(|i| format!("{:04}", i)) {
         let (key, obj) = iter.next().unwrap().unwrap();
-        let body: Vec<u8> = obj.body.unwrap().concat2().wait().unwrap();
+        let body: Vec<u8> = obj.body.unwrap().concat2().wait().unwrap().to_vec();
         assert_eq!(key, i);
         assert_eq!(body, i.as_bytes());
     }
