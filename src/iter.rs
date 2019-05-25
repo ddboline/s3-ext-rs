@@ -92,9 +92,9 @@
 //! }
 //! ```
 
-use rusoto_core::{RusotoError, RusotoResult};
 use crate::error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
+use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
     S3,
