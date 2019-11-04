@@ -57,6 +57,7 @@ where
             storage_class: target.storage_class.to_owned(),
             tagging: target.tagging.to_owned(),
             website_redirect_location: target.website_redirect_location.to_owned(),
+            ..Default::default()
         })
         .sync()?;
 
