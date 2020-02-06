@@ -94,6 +94,7 @@
 
 use crate::error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
+use futures::executor::block_on;
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
@@ -139,7 +140,7 @@ impl<'a> ObjectIter<'a> {
     }
 
     fn next_objects(&mut self) -> RusotoResult<(), ListObjectsV2Error> {
-        let resp = self.client.list_objects_v2(self.request.clone()).sync()?;
+        let resp = block_on(self.client.list_objects_v2(self.request.clone()))?;
         self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
         match resp.next_continuation_token {
             next @ Some(_) => self.request.continuation_token = next,
@@ -234,7 +235,7 @@ impl<'a> GetObjectIter<'a> {
                 self.request.key = object
                     .key
                     .ok_or_else(|| S4Error::Other("response is missing key"))?;
-                match self.inner.client.get_object(self.request.clone()).sync() {
+                match block_on(self.inner.client.get_object(self.request.clone())) {
                     Ok(o) => {
                         let key = mem::replace(&mut self.request.key, String::new());
                         Ok(Some((key, o)))

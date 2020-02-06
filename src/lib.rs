@@ -22,23 +22,15 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 
-#[macro_use]
-extern crate derive_error;
-extern crate fallible_iterator;
-extern crate futures;
-#[macro_use]
-extern crate log;
-extern crate rusoto_core;
-extern crate rusoto_credential;
-extern crate rusoto_s3;
-extern crate tokio_io;
-
 pub mod iter;
 use crate::iter::{GetObjectIter, ObjectIter};
 pub mod error;
 use crate::error::{S4Error, S4Result};
 mod upload;
 
+use async_trait::async_trait;
+use futures::executor::block_on;
+use log::debug;
 use rusoto_core::request::{HttpClient, TlsError};
 use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
@@ -64,6 +56,7 @@ pub fn new_s3client_with_credentials(
     ))
 }
 
+#[async_trait]
 pub trait S4 {
     /// Get object and write it to file `target`
     fn download_to_file<F>(&self, source: GetObjectRequest, target: F) -> S4Result<GetObjectOutput>
@@ -150,6 +143,7 @@ pub trait S4 {
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
 }
 
+#[async_trait]
 impl<'a> S4 for S3Client {
     fn download_to_file<F>(
         &self,
@@ -160,7 +154,7 @@ impl<'a> S4 for S3Client {
         F: AsRef<Path>,
     {
         debug!("downloading to file {:?}", target.as_ref());
-        let mut resp = self.get_object(source).sync()?;
+        let mut resp = block_on(self.get_object(source))?;
         let body = resp.body.take().expect("no body");
         let mut target = OpenOptions::new()
             .write(true)
@@ -199,7 +193,7 @@ impl<'a> S4 for S3Client {
     where
         W: io::Write,
     {
-        let mut resp = self.get_object(source).sync()?;
+        let mut resp = block_on(self.get_object(source))?;
         let body = resp.body.take().expect("no body");
         copy(body, &mut target)?;
         Ok(resp)

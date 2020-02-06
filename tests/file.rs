@@ -292,10 +292,10 @@ quickcheck! {
         }
 
         // all uploads must have been aborted
-        let parts = client.list_multipart_uploads(ListMultipartUploadsRequest {
+        let parts = block_on(client.list_multipart_uploads(ListMultipartUploadsRequest {
             bucket: bucket.to_owned(),
             ..Default::default()
-        }).sync().unwrap();
+        })).unwrap();
         parts.uploads.is_none()
     }
 }

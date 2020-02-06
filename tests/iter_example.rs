@@ -31,26 +31,22 @@ fn main() {
 
     // create bucket
 
-    client
-        .create_bucket(CreateBucketRequest {
-            bucket: bucket.clone(),
-            ..Default::default()
-        })
-        .sync()
-        .expect("failed to create bucket");
+    block_on(client.create_bucket(CreateBucketRequest {
+        bucket: bucket.clone(),
+        ..Default::default()
+    }))
+    .expect("failed to create bucket");
 
     // create test objects
 
     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
-        client
-            .put_object(PutObjectRequest {
-                bucket: bucket.clone(),
-                key: obj.to_string(),
-                body: Some(obj.as_bytes().to_vec().into()),
-                ..Default::default()
-            })
-            .sync()
-            .expect("failed to store object");
+        block_on(client.put_object(PutObjectRequest {
+            bucket: bucket.clone(),
+            key: obj.to_string(),
+            body: Some(obj.as_bytes().to_vec().into()),
+            ..Default::default()
+        }))
+        .expect("failed to store object");
     }
 
     // iterate over objects objects (sorted alphabetically)

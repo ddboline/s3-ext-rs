@@ -35,38 +35,32 @@ pub fn create_test_bucket() -> (S3Client, String) {
         .collect();
     let bucket = bucket.to_lowercase();
 
-    client
-        .create_bucket(CreateBucketRequest {
-            bucket: bucket.clone(),
-            ..Default::default()
-        })
-        .sync()
-        .unwrap();
+    block_on(client.create_bucket(CreateBucketRequest {
+        bucket: bucket.clone(),
+        ..Default::default()
+    }))
+    .unwrap();
 
     (client, bucket)
 }
 
 pub fn put_object(client: &S3Client, bucket: &str, key: &str, data: Vec<u8>) {
-    client
-        .put_object(PutObjectRequest {
-            bucket: bucket.to_string(),
-            key: key.to_string(),
-            body: Some(data.into()),
-            ..Default::default()
-        })
-        .sync()
-        .unwrap();
+    block_on(client.put_object(PutObjectRequest {
+        bucket: bucket.to_string(),
+        key: key.to_string(),
+        body: Some(data.into()),
+        ..Default::default()
+    }))
+    .unwrap();
 }
 
 pub fn get_body(client: &S3Client, bucket: &str, key: &str) -> Vec<u8> {
-    let object = client
-        .get_object(GetObjectRequest {
-            bucket: bucket.to_owned(),
-            key: key.to_owned(),
-            ..Default::default()
-        })
-        .sync()
-        .unwrap();
+    let object = block_on(client.get_object(GetObjectRequest {
+        bucket: bucket.to_owned(),
+        key: key.to_owned(),
+        ..Default::default()
+    }))
+    .unwrap();
     object.body.unwrap().concat2().wait().unwrap().to_vec()
 }
 

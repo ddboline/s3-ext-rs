@@ -1,4 +1,6 @@
 use crate::error::{S4Error, S4Result};
+use futures::executor::block_on;
+use log::{debug, info, warn};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,
@@ -17,7 +19,7 @@ where
     let mut content = Vec::new();
     source.read_to_end(&mut content)?;
     target.body = Some(content.into());
-    client.put_object(target).sync().map_err(|e| e.into())
+    block_on(client.put_object(target)).map_err(|e| e.into())
 }
 
 pub(crate) fn upload_multipart<R>(
@@ -29,8 +31,8 @@ pub(crate) fn upload_multipart<R>(
 where
     R: Read,
 {
-    let upload = client
-        .create_multipart_upload(CreateMultipartUploadRequest {
+    let upload = block_on(
+        client.create_multipart_upload(CreateMultipartUploadRequest {
             acl: target.acl.to_owned(),
             bucket: target.bucket.to_owned(),
             cache_control: target.cache_control.to_owned(),
@@ -57,8 +59,9 @@ where
             storage_class: target.storage_class.to_owned(),
             tagging: target.tagging.to_owned(),
             website_redirect_location: target.website_redirect_location.to_owned(),
-        })
-        .sync()?;
+            ssekms_encryption_context: target.ssekms_encryption_context.to_owned(),
+        }),
+    )?;
 
     let upload_id = upload
         .upload_id
@@ -76,15 +79,12 @@ where
                 "aborting upload {:?} due to a failure during upload",
                 upload_id
             );
-            if let Err(e) = client
-                .abort_multipart_upload(AbortMultipartUploadRequest {
-                    bucket: target.bucket.to_owned(),
-                    key: target.key.to_owned(),
-                    request_payer: target.request_payer.to_owned(),
-                    upload_id,
-                })
-                .sync()
-            {
+            if let Err(e) = block_on(client.abort_multipart_upload(AbortMultipartUploadRequest {
+                bucket: target.bucket.to_owned(),
+                key: target.key.to_owned(),
+                request_payer: target.request_payer.to_owned(),
+                upload_id,
+            })) {
                 warn!("ignoring failure to abort multi-part upload: {:?}", e);
             };
             err
@@ -112,21 +112,19 @@ where
         }
         body.truncate(size);
 
-        let part = client
-            .upload_part(UploadPartRequest {
-                body: Some(body.into()),
-                bucket: target.bucket.clone(),
-                content_length: None,
-                content_md5: None,
-                key: target.key.clone(),
-                part_number,
-                request_payer: target.request_payer.clone(),
-                sse_customer_algorithm: target.sse_customer_algorithm.clone(),
-                sse_customer_key: target.sse_customer_key.clone(),
-                sse_customer_key_md5: target.sse_customer_key_md5.clone(),
-                upload_id: upload_id.to_owned(),
-            })
-            .sync()?;
+        let part = block_on(client.upload_part(UploadPartRequest {
+            body: Some(body.into()),
+            bucket: target.bucket.clone(),
+            content_length: None,
+            content_md5: None,
+            key: target.key.clone(),
+            part_number,
+            request_payer: target.request_payer.clone(),
+            sse_customer_algorithm: target.sse_customer_algorithm.clone(),
+            sse_customer_key: target.sse_customer_key.clone(),
+            sse_customer_key_md5: target.sse_customer_key_md5.clone(),
+            upload_id: upload_id.to_owned(),
+        }))?;
 
         parts.push(CompletedPart {
             e_tag: part.e_tag,
@@ -134,14 +132,14 @@ where
         });
     }
 
-    client
-        .complete_multipart_upload(CompleteMultipartUploadRequest {
+    block_on(
+        client.complete_multipart_upload(CompleteMultipartUploadRequest {
             bucket: target.bucket.to_owned(),
             key: target.key.to_owned(),
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
             request_payer: target.request_payer.to_owned(),
             upload_id: upload_id.to_owned(),
-        })
-        .sync()
-        .map_err(|e| e.into())
+        }),
+    )
+    .map_err(|e| e.into())
 }

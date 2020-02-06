@@ -14,21 +14,22 @@ edition = "2018"
 gitlab = { repository = "pgerber/s4" }
 
 [dependencies]
-derive-error = "0.0"
+thiserror = "1.0"
 log = "0.4"
 fallible-iterator = "0.2"
-futures = "0.1"
-rusoto_core = { version = "0.40", default_features = false }
-rusoto_credential = "0.40"
-rusoto_s3 = { version = "0.40", default_features = false }
-tokio-io = "0.1"
+futures = "0.3"
+rusoto_core = { git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02", default_features = false }
+rusoto_credential = {git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02"}
+rusoto_s3 = { git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02", default_features = false }
+tokio = {version="0.2", features=["fs", "io-util"]}
+async-trait = "0.1"
 
 [dev-dependencies]
 tempdir = "0.3"
-rand = "0.6"
-rand_xorshift = "0.1"
-env_logger = "0.6"
-quickcheck = "0.8"
+rand = "0.7"
+rand_xorshift = "0.2"
+env_logger = "0.7"
+quickcheck = "0.9"
 
 [features]
 default = ["rustls"]
