@@ -3,7 +3,7 @@ name = "s4"
 description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
 version = "0.0.15"
 documentation = "https://docs.rs/s4"
-repository = "https://gitlab.com/pgerber/s4"
+repository = "https://gitlab.com/ddboline/s4"
 authors = ["Peter Gerber <peter@arbitrary.ch>"]
 license = "LGPL-3.0+"
 readme = "README.md"
@@ -11,16 +11,16 @@ keywords = ["AWS", "S3"]
 edition = "2018"
 
 [badges]
-gitlab = { repository = "pgerber/s4" }
+github = { repository = "pgerber/s4" }
 
 [dependencies]
 thiserror = "1.0"
 log = "0.4"
 fallible-iterator = "0.2"
 futures = "0.3"
-rusoto_core = { git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02", default_features = false }
-rusoto_credential = {git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02"}
-rusoto_s3 = { git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02", default_features = false }
+rusoto_core = { git = "https://github.com/rusoto/rusoto.git", branch = "master", default_features = false }
+rusoto_credential = {git = "https://github.com/rusoto/rusoto.git", branch = "master"}
+rusoto_s3 = { git = "https://github.com/rusoto/rusoto.git", branch = "master", default_features = false }
 tokio = {version="0.2", features=["fs", "io-util"]}
 async-trait = "0.1"
 parking_lot = "0.10"
