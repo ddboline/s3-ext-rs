@@ -84,7 +84,7 @@ pub struct ReaderWithError {
 impl AsyncRead for ReaderWithError {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context,
+        _: &mut Context,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         if buf.len() > self.abort_after {
