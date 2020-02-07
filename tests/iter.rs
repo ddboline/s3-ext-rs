@@ -5,7 +5,7 @@ use fallible_iterator::FallibleIterator;
 use rusoto_s3::GetObjectOutput;
 use s4::error::S4Result;
 use s4::S4;
-use tokio::io::{AsyncReadExt};
+use tokio::io::AsyncReadExt;
 
 #[tokio::test]
 async fn iter_objects() {

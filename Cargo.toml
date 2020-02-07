@@ -23,8 +23,6 @@ rusoto_credential = {git = "https://github.com/rusoto/rusoto.git", branch = "mas
 rusoto_s3 = { git = "https://github.com/rusoto/rusoto.git", branch = "master", default_features = false }
 tokio = {version="0.2", features=["fs", "io-util"]}
 async-trait = "0.1"
-parking_lot = "0.10"
-lazy_static = "1.4"
 
 [dev-dependencies]
 tempdir = "0.3"

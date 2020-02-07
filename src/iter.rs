@@ -94,8 +94,6 @@
 
 use crate::error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
@@ -104,11 +102,6 @@ use rusoto_s3::{
 use std::mem;
 use std::vec::IntoIter;
 use tokio::runtime::Runtime;
-
-lazy_static! {
-    static ref RUNTIME: Mutex<Runtime> =
-        Mutex::new(Runtime::new().expect("Failed to start runtime"));
-}
 
 /// Iterator over all objects or objects with a given prefix
 pub struct ObjectIter {
@@ -178,15 +171,17 @@ impl FallibleIterator for ObjectIter {
         } else if self.exhausted {
             Ok(None)
         } else {
-            RUNTIME.lock().block_on(self.next_objects())?;
+            let mut rt = Runtime::new()?;
+            rt.block_on(self.next_objects())?;
             Ok(self.objects.next())
         }
     }
 
     fn count(mut self) -> Result<usize, Self::Error> {
         let mut count = self.objects.len();
+        let mut rt = Runtime::new()?;
         while !self.exhausted {
-            RUNTIME.lock().block_on(self.next_objects())?;
+            rt.block_on(self.next_objects())?;
             count += self.objects.len();
         }
         Ok(count)
@@ -194,13 +189,15 @@ impl FallibleIterator for ObjectIter {
 
     #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        RUNTIME.lock().block_on(self.last_internal())
+        let mut rt = Runtime::new()?;
+        rt.block_on(self.last_internal())
     }
 
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
+        let mut rt = Runtime::new()?;
         while self.objects.len() <= n && !self.exhausted {
             n -= self.objects.len();
-            RUNTIME.lock().block_on(self.next_objects())?;
+            rt.block_on(self.next_objects())?;
         }
         Ok(self.objects.nth(n))
     }
@@ -265,7 +262,9 @@ impl FallibleIterator for GetObjectIter {
     #[inline]
     fn next(&mut self) -> S4Result<Option<Self::Item>> {
         let next = self.inner.next()?;
-        RUNTIME.lock().block_on(self.retrieve(next))
+        let fut = self.retrieve(next);
+        let mut rt = Runtime::new().expect("Failed to start runtime");
+        rt.block_on(fut)
     }
 
     #[inline]
@@ -275,13 +274,15 @@ impl FallibleIterator for GetObjectIter {
 
     #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let last = RUNTIME.lock().block_on(self.inner.last_internal())?;
-        RUNTIME.lock().block_on(self.retrieve(last))
+        let mut rt = Runtime::new()?;
+        let last = rt.block_on(self.inner.last_internal())?;
+        rt.block_on(self.retrieve(last))
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Result<Option<Self::Item>, Self::Error> {
         let nth = self.inner.nth(n)?;
-        RUNTIME.lock().block_on(self.retrieve(nth))
+        let mut rt = Runtime::new()?;
+        rt.block_on(self.retrieve(nth))
     }
 }
