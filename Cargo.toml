@@ -23,6 +23,8 @@ rusoto_credential = {git = "https://github.com/jen20/rusoto.git", branch = "jen2
 rusoto_s3 = { git = "https://github.com/jen20/rusoto.git", branch = "jen20/rebase-tokio-02", default_features = false }
 tokio = {version="0.2", features=["fs", "io-util"]}
 async-trait = "0.1"
+parking_lot = "0.10"
+lazy_static = "1.4"
 
 [dev-dependencies]
 tempdir = "0.3"

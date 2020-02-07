@@ -1,38 +1,37 @@
 use crate::error::{S4Error, S4Result};
-use futures::executor::block_on;
 use log::{debug, info, warn};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,
     PutObjectRequest, S3Client, UploadPartRequest, S3,
 };
-use std::io::Read;
+use tokio::io::{AsyncRead, AsyncReadExt};
 
-pub(crate) fn upload<R>(
+pub(crate) async fn upload<R>(
     client: &S3Client,
     source: &mut R,
     mut target: PutObjectRequest,
 ) -> S4Result<PutObjectOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
     let mut content = Vec::new();
-    source.read_to_end(&mut content)?;
+    source.read_to_end(&mut content).await?;
     target.body = Some(content.into());
-    block_on(client.put_object(target)).map_err(|e| e.into())
+    client.put_object(target).await.map_err(|e| e.into())
 }
 
-pub(crate) fn upload_multipart<R>(
+pub(crate) async fn upload_multipart<R>(
     client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
     part_size: usize,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
-    let upload = block_on(
-        client.create_multipart_upload(CreateMultipartUploadRequest {
+    let upload = client
+        .create_multipart_upload(CreateMultipartUploadRequest {
             acl: target.acl.to_owned(),
             bucket: target.bucket.to_owned(),
             cache_control: target.cache_control.to_owned(),
@@ -60,8 +59,8 @@ where
             tagging: target.tagging.to_owned(),
             website_redirect_location: target.website_redirect_location.to_owned(),
             ssekms_encryption_context: target.ssekms_encryption_context.to_owned(),
-        }),
-    )?;
+        })
+        .await?;
 
     let upload_id = upload
         .upload_id
@@ -72,19 +71,24 @@ where
         upload_id, target.bucket, target.key
     );
 
-    match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id) {
+    match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id)
+        .await
+    {
         ok @ Ok(_) => ok,
         err @ Err(_) => {
             info!(
                 "aborting upload {:?} due to a failure during upload",
                 upload_id
             );
-            if let Err(e) = block_on(client.abort_multipart_upload(AbortMultipartUploadRequest {
-                bucket: target.bucket.to_owned(),
-                key: target.key.to_owned(),
-                request_payer: target.request_payer.to_owned(),
-                upload_id,
-            })) {
+            if let Err(e) = client
+                .abort_multipart_upload(AbortMultipartUploadRequest {
+                    bucket: target.bucket.to_owned(),
+                    key: target.key.to_owned(),
+                    request_payer: target.request_payer.to_owned(),
+                    upload_id,
+                })
+                .await
+            {
                 warn!("ignoring failure to abort multi-part upload: {:?}", e);
             };
             err
@@ -93,7 +97,7 @@ where
 }
 
 // Upload needs to be aborted if this function fails
-fn upload_multipart_needs_abort_on_error<R>(
+async fn upload_multipart_needs_abort_on_error<R>(
     client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
@@ -101,30 +105,32 @@ fn upload_multipart_needs_abort_on_error<R>(
     upload_id: &str,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
     let mut parts = Vec::new();
     for part_number in 1.. {
         let mut body = vec![0; part_size];
-        let size = source.read(&mut body[..])?;
+        let size = source.read(&mut body[..]).await?;
         if size == 0 {
             break;
         }
         body.truncate(size);
 
-        let part = block_on(client.upload_part(UploadPartRequest {
-            body: Some(body.into()),
-            bucket: target.bucket.clone(),
-            content_length: None,
-            content_md5: None,
-            key: target.key.clone(),
-            part_number,
-            request_payer: target.request_payer.clone(),
-            sse_customer_algorithm: target.sse_customer_algorithm.clone(),
-            sse_customer_key: target.sse_customer_key.clone(),
-            sse_customer_key_md5: target.sse_customer_key_md5.clone(),
-            upload_id: upload_id.to_owned(),
-        }))?;
+        let part = client
+            .upload_part(UploadPartRequest {
+                body: Some(body.into()),
+                bucket: target.bucket.clone(),
+                content_length: None,
+                content_md5: None,
+                key: target.key.clone(),
+                part_number,
+                request_payer: target.request_payer.clone(),
+                sse_customer_algorithm: target.sse_customer_algorithm.clone(),
+                sse_customer_key: target.sse_customer_key.clone(),
+                sse_customer_key_md5: target.sse_customer_key_md5.clone(),
+                upload_id: upload_id.to_owned(),
+            })
+            .await?;
 
         parts.push(CompletedPart {
             e_tag: part.e_tag,
@@ -132,14 +138,14 @@ where
         });
     }
 
-    block_on(
-        client.complete_multipart_upload(CompleteMultipartUploadRequest {
+    client
+        .complete_multipart_upload(CompleteMultipartUploadRequest {
             bucket: target.bucket.to_owned(),
             key: target.key.to_owned(),
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
             request_payer: target.request_payer.to_owned(),
             upload_id: upload_id.to_owned(),
-        }),
-    )
-    .map_err(|e| e.into())
+        })
+        .await
+        .map_err(|e| e.into())
 }

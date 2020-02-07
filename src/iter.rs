@@ -94,7 +94,8 @@
 
 use crate::error::{S4Error, S4Result};
 use fallible_iterator::FallibleIterator;
-use futures::executor::block_on;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
@@ -102,19 +103,25 @@ use rusoto_s3::{
 };
 use std::mem;
 use std::vec::IntoIter;
+use tokio::runtime::Runtime;
+
+lazy_static! {
+    static ref RUNTIME: Mutex<Runtime> =
+        Mutex::new(Runtime::new().expect("Failed to start runtime"));
+}
 
 /// Iterator over all objects or objects with a given prefix
-pub struct ObjectIter<'a> {
-    client: &'a S3Client,
+pub struct ObjectIter {
+    client: S3Client,
     request: ListObjectsV2Request,
     objects: IntoIter<Object>,
     exhausted: bool,
 }
 
-impl<'a> Clone for ObjectIter<'a> {
+impl Clone for ObjectIter {
     fn clone(&self) -> Self {
         ObjectIter {
-            client: self.client,
+            client: self.client.clone(),
             request: self.request.clone(),
             objects: self.objects.clone(),
             exhausted: self.exhausted,
@@ -122,8 +129,8 @@ impl<'a> Clone for ObjectIter<'a> {
     }
 }
 
-impl<'a> ObjectIter<'a> {
-    pub(crate) fn new(client: &'a S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+impl ObjectIter {
+    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         let request = ListObjectsV2Request {
             bucket: bucket.to_owned(),
             max_keys: Some(1000),
@@ -132,15 +139,15 @@ impl<'a> ObjectIter<'a> {
         };
 
         ObjectIter {
-            client,
+            client: client.clone(),
             request,
             objects: Vec::new().into_iter(),
             exhausted: false,
         }
     }
 
-    fn next_objects(&mut self) -> RusotoResult<(), ListObjectsV2Error> {
-        let resp = block_on(self.client.list_objects_v2(self.request.clone()))?;
+    async fn next_objects(&mut self) -> RusotoResult<(), ListObjectsV2Error> {
+        let resp = self.client.list_objects_v2(self.request.clone()).await?;
         self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
         match resp.next_continuation_token {
             next @ Some(_) => self.request.continuation_token = next,
@@ -149,10 +156,10 @@ impl<'a> ObjectIter<'a> {
         Ok(())
     }
 
-    fn last_internal(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
+    async fn last_internal(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
         let mut objects = mem::replace(&mut self.objects, Vec::new().into_iter());
         while !self.exhausted {
-            self.next_objects()?;
+            self.next_objects().await?;
             if self.objects.len() > 0 {
                 objects = mem::replace(&mut self.objects, Vec::new().into_iter());
             }
@@ -161,7 +168,7 @@ impl<'a> ObjectIter<'a> {
     }
 }
 
-impl<'a> FallibleIterator for ObjectIter<'a> {
+impl FallibleIterator for ObjectIter {
     type Item = Object;
     type Error = RusotoError<ListObjectsV2Error>;
 
@@ -171,7 +178,7 @@ impl<'a> FallibleIterator for ObjectIter<'a> {
         } else if self.exhausted {
             Ok(None)
         } else {
-            self.next_objects()?;
+            RUNTIME.lock().block_on(self.next_objects())?;
             Ok(self.objects.next())
         }
     }
@@ -179,7 +186,7 @@ impl<'a> FallibleIterator for ObjectIter<'a> {
     fn count(mut self) -> Result<usize, Self::Error> {
         let mut count = self.objects.len();
         while !self.exhausted {
-            self.next_objects()?;
+            RUNTIME.lock().block_on(self.next_objects())?;
             count += self.objects.len();
         }
         Ok(count)
@@ -187,13 +194,13 @@ impl<'a> FallibleIterator for ObjectIter<'a> {
 
     #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        self.last_internal()
+        RUNTIME.lock().block_on(self.last_internal())
     }
 
     fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
         while self.objects.len() <= n && !self.exhausted {
             n -= self.objects.len();
-            self.next_objects()?;
+            RUNTIME.lock().block_on(self.next_objects())?;
         }
         Ok(self.objects.nth(n))
     }
@@ -202,12 +209,12 @@ impl<'a> FallibleIterator for ObjectIter<'a> {
 /// Iterator retrieving all objects or objects with a given prefix
 ///
 /// The iterator yields tuples of `(key, object)`.
-pub struct GetObjectIter<'a> {
-    inner: ObjectIter<'a>,
+pub struct GetObjectIter {
+    inner: ObjectIter,
     request: GetObjectRequest,
 }
 
-impl<'a> Clone for GetObjectIter<'a> {
+impl Clone for GetObjectIter {
     fn clone(&self) -> Self {
         GetObjectIter {
             inner: self.inner.clone(),
@@ -216,8 +223,8 @@ impl<'a> Clone for GetObjectIter<'a> {
     }
 }
 
-impl<'a> GetObjectIter<'a> {
-    pub(crate) fn new(client: &'a S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+impl GetObjectIter {
+    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         let request = GetObjectRequest {
             bucket: bucket.to_owned(),
             ..Default::default()
@@ -229,13 +236,16 @@ impl<'a> GetObjectIter<'a> {
         }
     }
 
-    fn retrieve(&mut self, object: Option<Object>) -> S4Result<Option<(String, GetObjectOutput)>> {
+    async fn retrieve(
+        &mut self,
+        object: Option<Object>,
+    ) -> S4Result<Option<(String, GetObjectOutput)>> {
         match object {
             Some(object) => {
                 self.request.key = object
                     .key
                     .ok_or_else(|| S4Error::Other("response is missing key"))?;
-                match block_on(self.inner.client.get_object(self.request.clone())) {
+                match self.inner.client.get_object(self.request.clone()).await {
                     Ok(o) => {
                         let key = mem::replace(&mut self.request.key, String::new());
                         Ok(Some((key, o)))
@@ -248,14 +258,14 @@ impl<'a> GetObjectIter<'a> {
     }
 }
 
-impl<'a> FallibleIterator for GetObjectIter<'a> {
+impl FallibleIterator for GetObjectIter {
     type Item = (String, GetObjectOutput);
     type Error = S4Error;
 
     #[inline]
     fn next(&mut self) -> S4Result<Option<Self::Item>> {
         let next = self.inner.next()?;
-        self.retrieve(next)
+        RUNTIME.lock().block_on(self.retrieve(next))
     }
 
     #[inline]
@@ -265,13 +275,13 @@ impl<'a> FallibleIterator for GetObjectIter<'a> {
 
     #[inline]
     fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let last = self.inner.last_internal()?;
-        self.retrieve(last)
+        let last = RUNTIME.lock().block_on(self.inner.last_internal())?;
+        RUNTIME.lock().block_on(self.retrieve(last))
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Result<Option<Self::Item>, Self::Error> {
         let nth = self.inner.nth(n)?;
-        self.retrieve(nth)
+        RUNTIME.lock().block_on(self.retrieve(nth))
     }
 }

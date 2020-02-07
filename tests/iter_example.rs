@@ -1,21 +1,13 @@
-extern crate fallible_iterator;
-extern crate futures;
-extern crate rand;
-extern crate rusoto_core;
-extern crate rusoto_s3;
-extern crate s4;
-
 use fallible_iterator::FallibleIterator;
-use futures::stream::Stream;
-use futures::Future;
 use rand::RngCore;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
 use s4::S4;
 use std::env;
+use std::io::Read;
 
-#[test]
-fn main() {
+#[tokio::test]
+async fn main() {
     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
 
     // setup client
@@ -31,28 +23,34 @@ fn main() {
 
     // create bucket
 
-    block_on(client.create_bucket(CreateBucketRequest {
-        bucket: bucket.clone(),
-        ..Default::default()
-    }))
-    .expect("failed to create bucket");
+    client
+        .create_bucket(CreateBucketRequest {
+            bucket: bucket.clone(),
+            ..Default::default()
+        })
+        .await
+        .expect("failed to create bucket");
 
     // create test objects
 
     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
-        block_on(client.put_object(PutObjectRequest {
-            bucket: bucket.clone(),
-            key: obj.to_string(),
-            body: Some(obj.as_bytes().to_vec().into()),
-            ..Default::default()
-        }))
-        .expect("failed to store object");
+        client
+            .put_object(PutObjectRequest {
+                bucket: bucket.clone(),
+                key: obj.to_string(),
+                body: Some(obj.as_bytes().to_vec().into()),
+                ..Default::default()
+            })
+            .await
+            .map(|_| ())
+            .expect("failed to store object");
     }
 
     // iterate over objects objects (sorted alphabetically)
 
     let objects: Vec<_> = client
         .iter_objects(&bucket)
+        .await
         .map(|obj| Ok(obj.key.unwrap()))
         .collect()
         .expect("failed to fetch list of objects");
@@ -72,7 +70,16 @@ fn main() {
 
     let bodies: Vec<_> = client
         .iter_get_objects(&bucket)
-        .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap().to_vec())))
+        .await
+        .map(|(key, obj)| {
+            let mut body = Vec::new();
+            obj.body
+                .unwrap()
+                .into_blocking_read()
+                .read_to_end(&mut body)
+                .unwrap();
+            Ok((key, body))
+        })
         .collect()
         .expect("failed to fetch content");
 
