@@ -18,9 +18,9 @@ thiserror = "1.0"
 log = "0.4"
 fallible-iterator = "0.2"
 futures = "0.3"
-rusoto_core = { git = "https://github.com/rusoto/rusoto.git", branch = "master", default_features = false }
-rusoto_credential = {git = "https://github.com/rusoto/rusoto.git", branch = "master"}
-rusoto_s3 = { git = "https://github.com/rusoto/rusoto.git", branch = "master", default_features = false }
+rusoto_core = { version = "0.43.0-beta.1", default_features = false }
+rusoto_credential = {version = "0.43.0-beta.1"}
+rusoto_s3 = { version = "0.43.0-beta.1", default_features = false }
 tokio = {version="0.2", features=["fs", "io-util"]}
 async-trait = "0.1"
 
