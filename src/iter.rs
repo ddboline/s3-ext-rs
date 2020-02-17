@@ -104,13 +104,10 @@ use rusoto_s3::{
 use std::mem;
 use std::vec::IntoIter;
 use tokio::runtime::Runtime;
-use tokio::stream::Stream;
 
 lazy_static! {
     static ref RT: Mutex<Runtime> = Mutex::new(Runtime::new().expect("Failed to start runtime"));
 }
-
-pub type ObjectItem = RusotoResult<Object, ListObjectsV2Error>;
 
 /// Iterator over all objects or objects with a given prefix
 pub struct ObjectIter {
@@ -169,16 +166,14 @@ impl ObjectIter {
         Ok(objects.last())
     }
 
-    async fn next_object(&mut self) -> Option<RusotoResult<Object, ListObjectsV2Error>> {
-        if let Some(object) = self.objects.next() {
-            Some(Ok(object))
+    pub async fn next_object(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
+        if let object @ Some(_) = self.objects.next() {
+            Ok(object)
         } else if self.exhausted {
-            None
+            Ok(None)
         } else {
-            self.next_objects()
-                .await
-                .map(|_| self.objects.next())
-                .transpose()
+            self.next_objects().await?;
+            Ok(self.objects.next())
         }
     }
 }
@@ -220,8 +215,6 @@ impl FallibleIterator for ObjectIter {
         Ok(self.objects.nth(n))
     }
 }
-
-pub type GetObjectItem = S4Result<(String, GetObjectOutput)>;
 
 /// Iterator retrieving all objects or objects with a given prefix
 ///
@@ -274,12 +267,9 @@ impl GetObjectIter {
         }
     }
 
-    async fn retrieve_next(&mut self) -> Option<S4Result<(String, GetObjectOutput)>> {
-        match self.inner.next() {
-            Ok(next) => self.retrieve(next).await,
-            Err(e) => Err(e.into()),
-        }
-        .transpose()
+    pub async fn retrieve_next(&mut self) -> S4Result<Option<(String, GetObjectOutput)>> {
+        let next = self.inner.next()?;
+        self.retrieve(next).await
     }
 }
 

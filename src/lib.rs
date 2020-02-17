@@ -23,7 +23,7 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 
 pub mod iter;
-use crate::iter::{GetObjectIter, ObjectIter, GetObjectItem, ObjectItem};
+use crate::iter::{GetObjectIter, ObjectIter};
 pub mod error;
 use crate::error::{S4Error, S4Result};
 mod upload;
@@ -42,8 +42,6 @@ use std::convert::AsRef;
 use std::path::Path;
 use tokio::fs::{File, OpenOptions};
 use tokio::io;
-use futures::stream::{poll_fn, Stream};
-
 
 /// Create client using given static access/secret keys
 pub fn new_s3client_with_credentials(
@@ -159,11 +157,6 @@ pub trait S4 {
     ///
     /// Objects are lexicographically sorted by their key.
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
-
-    fn stream_objects(&self, bucket: &str) -> Box<dyn Stream<Item=ObjectItem>>;
-    fn stream_objects_with_prefix(&self, bucket: &str, prefix: &str) -> Box<dyn Stream<Item=ObjectItem>>;
-    fn stream_get_objects(&self, bucket: &str) -> Box<dyn Stream<Item=GetObjectItem>>;
-    fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> Box<dyn Stream<Item=GetObjectItem>>;
 }
 
 #[async_trait]
@@ -270,12 +263,6 @@ impl<'a> S4 for S3Client {
     #[inline]
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter {
         GetObjectIter::new(self, bucket, Some(prefix))
-    }
-
-    #[inline]
-    fn stream_objects(&self, bucket: &str) -> Box<dyn Stream<Item=ObjectItem>> {
-        let obj = ObjectIter::new(self, bucket, None);
-
     }
 }
 
