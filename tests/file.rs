@@ -109,7 +109,7 @@ fn test_download_to_file() {
         })
     }
     QuickCheck::new()
-        .max_tests(100)
+        .max_tests(10)
         .quickcheck(download_to_file as fn(Vec<u8>) -> bool);
 }
 
@@ -141,7 +141,7 @@ fn test_download() {
         })
     }
     QuickCheck::new()
-        .max_tests(100)
+        .max_tests(10)
         .quickcheck(download as fn(Vec<u8>) -> bool);
 }
 
@@ -252,7 +252,7 @@ fn test_upload_arbitrary() {
         })
     }
     QuickCheck::new()
-        .max_tests(100)
+        .max_tests(10)
         .quickcheck(upload_arbitrary as fn(Vec<u8>) -> bool);
 }
 
@@ -269,7 +269,7 @@ fn test_upload_multipart() {
         })
     }
     QuickCheck::new()
-        .max_tests(100)
+        .max_tests(10)
         .quickcheck(upload_multipart as fn() -> bool);
 }
 
@@ -354,6 +354,6 @@ fn test_multipart_upload_is_aborted() {
         })
     }
     QuickCheck::new()
-        .max_tests(100)
+        .max_tests(10)
         .quickcheck(multipart_upload_is_aborted as fn() -> bool);
 }
