@@ -50,7 +50,6 @@ async fn main() {
 
     let objects: Vec<_> = client
         .iter_objects(&bucket)
-        .await
         .map(|obj| Ok(obj.key.unwrap()))
         .collect()
         .expect("failed to fetch list of objects");
@@ -70,7 +69,6 @@ async fn main() {
 
     let bodies: Vec<_> = client
         .iter_get_objects(&bucket)
-        .await
         .map(|(key, obj)| {
             let mut body = Vec::new();
             obj.body
