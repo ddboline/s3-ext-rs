@@ -1,6 +1,8 @@
 mod common;
 use crate::common::ReaderWithError;
 
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use quickcheck::{quickcheck, RngCore};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -14,6 +16,10 @@ use tempdir::TempDir;
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, ErrorKind};
 use tokio::runtime::Runtime;
+
+lazy_static! {
+    static ref RT: Mutex<Runtime> = Mutex::new(Runtime::new().expect("Failed to start runtime"));
+}
 
 #[tokio::test]
 async fn target_file_already_exists() {
@@ -68,8 +74,7 @@ async fn target_file_not_created_when_object_does_not_exist() {
 
 quickcheck! {
     fn download_to_file(data: Vec<u8>) -> () {
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on( async {
+        RT.lock().block_on( async {
 
         let (client, bucket) = common::create_test_bucket().await;
         let dir = TempDir::new("").unwrap();
@@ -104,8 +109,7 @@ quickcheck! {
 
 quickcheck! {
     fn download(data: Vec<u8>) -> () {
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on( async {
+        RT.lock().block_on( async {
 
         let (client, bucket) = common::create_test_bucket().await;
         let key = "abc/def/ghi";
@@ -219,8 +223,7 @@ async fn upload() {
 
 quickcheck! {
     fn upload_arbitrary(body: Vec<u8>) -> bool {
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on( async {
+        RT.lock().block_on( async {
 
         let (client, bucket) = common::create_test_bucket().await;
         client.upload(&mut &body[..], PutObjectRequest {
@@ -237,8 +240,7 @@ quickcheck! {
 
 quickcheck! {
     fn upload_multipart() -> bool {
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on( async {
+        RT.lock().block_on( async {
 
             common::init_logger();
         let seed = rand::thread_rng().gen();
@@ -292,8 +294,7 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
 
 quickcheck! {
     fn multipart_upload_is_aborted() -> bool {
-        let mut rt = Runtime::new().unwrap();
-        rt.block_on( async {
+        RT.lock().block_on( async {
         common::init_logger();
         let (client, bucket) = common::create_test_bucket().await;
         let abort_after = rand::thread_rng().gen_range(0, 10 * 1024 * 1024); // between 0 and 10 MiB
