@@ -160,7 +160,7 @@ pub trait S4 {
 }
 
 #[async_trait]
-impl<'a> S4 for S3Client {
+impl S4 for S3Client {
     async fn download_to_file<F>(
         &self,
         source: GetObjectRequest,
