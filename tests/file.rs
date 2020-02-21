@@ -1,9 +1,7 @@
 mod common;
 use crate::common::ReaderWithError;
 
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
-use quickcheck::{QuickCheck, RngCore};
+use quickcheck::{RngCore, StdThreadGen};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rusoto_core::RusotoError;
@@ -15,11 +13,6 @@ use s4::S4;
 use tempdir::TempDir;
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, ErrorKind};
-use tokio::runtime::Runtime;
-
-lazy_static! {
-    static ref RT: Mutex<Runtime> = Mutex::new(Runtime::new().expect("Failed to start runtime"));
-}
 
 #[tokio::test]
 async fn target_file_already_exists() {
@@ -72,77 +65,79 @@ async fn target_file_not_created_when_object_does_not_exist() {
     );
 }
 
-#[test]
-fn test_download_to_file() {
-    fn download_to_file(data: Vec<u8>) -> bool {
-        RT.lock().block_on(async {
-            let (client, bucket) = common::create_test_bucket().await;
-            let dir = TempDir::new("").unwrap();
-            let file = dir.path().join("data");
-            let key = "some_key";
+#[tokio::test]
+async fn test_download_to_file() {
+    async fn download_to_file(data: Vec<u8>) -> bool {
+        let (client, bucket) = common::create_test_bucket().await;
+        let dir = TempDir::new("").unwrap();
+        let file = dir.path().join("data");
+        let key = "some_key";
 
-            common::put_object(&client, &bucket, key, data.clone()).await;
+        common::put_object(&client, &bucket, key, data.clone()).await;
 
-            let resp = client
-                .download_to_file(
-                    GetObjectRequest {
-                        bucket: bucket.clone(),
-                        key: key.to_owned(),
-                        ..Default::default()
-                    },
-                    &file,
-                )
-                .await
-                .unwrap();
+        let resp = client
+            .download_to_file(
+                GetObjectRequest {
+                    bucket: bucket.clone(),
+                    key: key.to_owned(),
+                    ..Default::default()
+                },
+                &file,
+            )
+            .await
+            .unwrap();
 
-            assert_eq!(resp.content_length, Some(data.len() as i64));
-            let mut buf = Vec::new();
-            File::open(&file)
-                .await
-                .unwrap()
-                .read_to_end(&mut buf)
-                .await
-                .unwrap();
+        assert_eq!(resp.content_length, Some(data.len() as i64));
+        let mut buf = Vec::new();
+        File::open(&file)
+            .await
+            .unwrap()
+            .read_to_end(&mut buf)
+            .await
+            .unwrap();
 
-            assert_eq!(buf, data);
-            true
-        })
+        assert_eq!(buf, data);
+        true
     }
-    QuickCheck::new()
-        .max_tests(10)
-        .quickcheck(download_to_file as fn(Vec<u8>) -> bool);
+    let mut gen = StdThreadGen::new(100);
+    for _ in 0..10 {
+        let mut data = Vec::new();
+        gen.fill_bytes(&mut data);
+        assert!(download_to_file(data).await);
+    }
 }
 
-#[test]
-fn test_download() {
-    fn download(data: Vec<u8>) -> bool {
-        RT.lock().block_on(async {
-            let (client, bucket) = common::create_test_bucket().await;
-            let key = "abc/def/ghi";
-            let mut target = Vec::new();
+#[tokio::test]
+async fn test_download() {
+    async fn download(data: Vec<u8>) -> bool {
+        let (client, bucket) = common::create_test_bucket().await;
+        let key = "abc/def/ghi";
+        let mut target = Vec::new();
 
-            common::put_object(&client, &bucket, key, data.clone()).await;
+        common::put_object(&client, &bucket, key, data.clone()).await;
 
-            let resp = client
-                .download(
-                    GetObjectRequest {
-                        bucket: bucket.clone(),
-                        key: key.to_owned(),
-                        ..Default::default()
-                    },
-                    &mut target,
-                )
-                .await
-                .unwrap();
+        let resp = client
+            .download(
+                GetObjectRequest {
+                    bucket: bucket.clone(),
+                    key: key.to_owned(),
+                    ..Default::default()
+                },
+                &mut target,
+            )
+            .await
+            .unwrap();
 
-            assert_eq!(resp.content_length, Some(data.len() as i64));
-            assert_eq!(data, target);
-            true
-        })
+        assert_eq!(resp.content_length, Some(data.len() as i64));
+        assert_eq!(data, target);
+        true
     }
-    QuickCheck::new()
-        .max_tests(10)
-        .quickcheck(download as fn(Vec<u8>) -> bool);
+    let mut gen = StdThreadGen::new(100);
+    for _ in 0..10 {
+        let mut data = Vec::new();
+        gen.fill_bytes(&mut data);
+        assert!(download(data).await);
+    }
 }
 
 #[tokio::test]
@@ -231,46 +226,45 @@ async fn upload() {
     );
 }
 
-#[test]
-fn test_upload_arbitrary() {
-    fn upload_arbitrary(body: Vec<u8>) -> bool {
-        RT.lock().block_on(async {
-            let (client, bucket) = common::create_test_bucket().await;
-            client
-                .upload(
-                    &mut &body[..],
-                    PutObjectRequest {
-                        bucket: bucket.clone(),
-                        key: "some_key".to_owned(),
-                        ..Default::default()
-                    },
-                )
-                .await
-                .unwrap();
+#[tokio::test]
+async fn test_upload_arbitrary() {
+    async fn upload_arbitrary(body: Vec<u8>) -> bool {
+        let (client, bucket) = common::create_test_bucket().await;
+        client
+            .upload(
+                &mut &body[..],
+                PutObjectRequest {
+                    bucket: bucket.clone(),
+                    key: "some_key".to_owned(),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
 
-            common::get_body(&client, &bucket, "some_key").await == body
-        })
+        common::get_body(&client, &bucket, "some_key").await == body
     }
-    QuickCheck::new()
-        .max_tests(10)
-        .quickcheck(upload_arbitrary as fn(Vec<u8>) -> bool);
+    let mut gen = StdThreadGen::new(100);
+    for _ in 0..10 {
+        let mut data = Vec::new();
+        gen.fill_bytes(&mut data);
+        assert!(upload_arbitrary(data).await);
+    }
 }
 
-#[test]
-fn test_upload_multipart() {
-    fn upload_multipart() -> bool {
-        RT.lock().block_on(async {
-            common::init_logger();
-            let seed = rand::thread_rng().gen();
-            println!("rng seed: {:?}", seed);
-            let mut rng = XorShiftRng::from_seed(seed);
-            let size = rng.gen_range(5 * 1024 * 1024, 15 * 1024 * 1024); // between 5 MiB and 15 MiB
-            upload_multipart_helper(&mut rng, 5 * 1024 * 1024, size).await
-        })
+#[tokio::test]
+async fn test_upload_multipart() {
+    async fn upload_multipart() -> bool {
+        common::init_logger();
+        let seed = rand::thread_rng().gen();
+        println!("rng seed: {:?}", seed);
+        let mut rng = XorShiftRng::from_seed(seed);
+        let size = rng.gen_range(5 * 1024 * 1024, 15 * 1024 * 1024); // between 5 MiB and 15 MiB
+        upload_multipart_helper(&mut rng, 5 * 1024 * 1024, size).await
     }
-    QuickCheck::new()
-        .max_tests(10)
-        .quickcheck(upload_multipart as fn() -> bool);
+    for _ in 0..10 {
+        assert!(upload_multipart().await);
+    }
 }
 
 #[tokio::test]
@@ -313,47 +307,45 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
     common::get_body(&client, &bucket, "object123").await == body
 }
 
-#[test]
-fn test_multipart_upload_is_aborted() {
-    fn multipart_upload_is_aborted() -> bool {
-        RT.lock().block_on(async {
-            common::init_logger();
-            let (client, bucket) = common::create_test_bucket().await;
-            let abort_after = rand::thread_rng().gen_range(0, 10 * 1024 * 1024); // between 0 and 10 MiB
-            println!("abort location: {}", abort_after);
-            let mut reader = ReaderWithError {
-                abort_after: abort_after,
-            };
+#[tokio::test]
+async fn test_multipart_upload_is_aborted() {
+    async fn multipart_upload_is_aborted() -> bool {
+        common::init_logger();
+        let (client, bucket) = common::create_test_bucket().await;
+        let abort_after = rand::thread_rng().gen_range(0, 10 * 1024 * 1024); // between 0 and 10 MiB
+        println!("abort location: {}", abort_after);
+        let mut reader = ReaderWithError {
+            abort_after: abort_after,
+        };
 
-            let put_request = PutObjectRequest {
-                bucket: bucket.clone(),
-                key: "aborted_upload".to_owned(),
+        let put_request = PutObjectRequest {
+            bucket: bucket.clone(),
+            key: "aborted_upload".to_owned(),
+            ..Default::default()
+        };
+        let err = client
+            .upload_multipart(&mut reader, &put_request, 5 * 1024 * 1024)
+            .await
+            .unwrap_err();
+        match err {
+            S4Error::IoError(e) => assert_eq!(
+                format!("{}", e.into_inner().unwrap()),
+                "explicit, unconditional error"
+            ),
+            e => panic!("unexpected error: {:?}", e),
+        }
+
+        // all uploads must have been aborted
+        let parts = client
+            .list_multipart_uploads(ListMultipartUploadsRequest {
+                bucket: bucket.to_owned(),
                 ..Default::default()
-            };
-            let err = client
-                .upload_multipart(&mut reader, &put_request, 5 * 1024 * 1024)
-                .await
-                .unwrap_err();
-            match err {
-                S4Error::IoError(e) => assert_eq!(
-                    format!("{}", e.into_inner().unwrap()),
-                    "explicit, unconditional error"
-                ),
-                e => panic!("unexpected error: {:?}", e),
-            }
-
-            // all uploads must have been aborted
-            let parts = client
-                .list_multipart_uploads(ListMultipartUploadsRequest {
-                    bucket: bucket.to_owned(),
-                    ..Default::default()
-                })
-                .await
-                .unwrap();
-            parts.uploads.is_none()
-        })
+            })
+            .await
+            .unwrap();
+        parts.uploads.is_none()
     }
-    QuickCheck::new()
-        .max_tests(10)
-        .quickcheck(multipart_upload_is_aborted as fn() -> bool);
+    for _ in 0..10 {
+        assert!(multipart_upload_is_aborted().await)
+    }
 }
