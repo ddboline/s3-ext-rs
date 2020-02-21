@@ -29,14 +29,14 @@ use crate::error::{S4Error, S4Result};
 mod upload;
 
 use async_trait::async_trait;
-use futures::executor::block_on;
+use futures::stream::BoxStream;
 use log::debug;
 use rusoto_core::request::{HttpClient, TlsError};
-use rusoto_core::Region;
+use rusoto_core::{Region, RusotoResult};
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
-    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
-    PutObjectRequest, S3Client, StreamingBody, S3,
+    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, ListObjectsV2Error, Object,
+    PutObjectOutput, PutObjectRequest, S3Client, StreamingBody, S3,
 };
 use std::convert::AsRef;
 use std::path::Path;
@@ -157,6 +157,25 @@ pub trait S4 {
     ///
     /// Objects are lexicographically sorted by their key.
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
+
+    fn stream_objects(
+        &self,
+        bucket: &str,
+    ) -> BoxStream<RusotoResult<Object, ListObjectsV2Error>>;
+    fn stream_objects_with_prefix(
+        &self,
+        bucket: &str,
+        prefix: &str,
+    ) -> BoxStream<RusotoResult<Object, ListObjectsV2Error>>;
+    fn stream_get_objects(
+        &self,
+        bucket: &str,
+    ) -> BoxStream<S4Result<(String, GetObjectOutput)>>;
+    fn stream_get_objects_with_prefix(
+        &self,
+        bucket: &str,
+        prefix: &str,
+    ) -> BoxStream<S4Result<(String, GetObjectOutput)>>;
 }
 
 #[async_trait]
@@ -218,7 +237,7 @@ impl S4 for S3Client {
     where
         W: io::AsyncWrite + Unpin + Send,
     {
-        let mut resp = block_on(self.get_object(source))?;
+        let mut resp = self.get_object(source).await?;
         let body = resp.body.take().expect("no body");
         copy(body, &mut target).await?;
         Ok(resp)
@@ -263,6 +282,43 @@ impl S4 for S3Client {
     #[inline]
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter {
         GetObjectIter::new(self, bucket, Some(prefix))
+    }
+
+    #[inline]
+    fn stream_objects(
+        &self,
+        bucket: &str,
+    ) -> BoxStream<RusotoResult<Object, ListObjectsV2Error>> {
+        Box::pin(self.iter_objects(bucket).into_stream())
+    }
+
+    #[inline]
+    fn stream_objects_with_prefix(
+        &self,
+        bucket: &str,
+        prefix: &str,
+    ) -> BoxStream<RusotoResult<Object, ListObjectsV2Error>> {
+        Box::pin(self.iter_objects_with_prefix(bucket, prefix).into_stream())
+    }
+
+    #[inline]
+    fn stream_get_objects(
+        &self,
+        bucket: &str,
+    ) -> BoxStream<S4Result<(String, GetObjectOutput)>> {
+        Box::pin(self.iter_get_objects(bucket).into_stream())
+    }
+
+    #[inline]
+    fn stream_get_objects_with_prefix(
+        &self,
+        bucket: &str,
+        prefix: &str,
+    ) -> BoxStream<S4Result<(String, GetObjectOutput)>> {
+        Box::pin(
+            self.iter_get_objects_with_prefix(bucket, prefix)
+                .into_stream(),
+        )
     }
 }
 
