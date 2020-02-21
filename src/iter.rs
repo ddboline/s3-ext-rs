@@ -3,23 +3,21 @@
 //! # Example
 //!
 //! ```
-//! extern crate fallible_iterator;
-//! extern crate futures;
-//! extern crate rand;
-//! extern crate rusoto_core;
-//! extern crate rusoto_s3;
-//! extern crate s4;
-//!
 //! use fallible_iterator::FallibleIterator;
-//! use futures::stream::Stream;
-//! use futures::Future;
+//! use futures::stream::{Stream, StreamExt, TryStreamExt};
+//! use futures::future::try_join_all;
+//! use std::future::Future;
 //! use rand::RngCore;
 //! use rusoto_core::Region;
 //! use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3, S3Client};
 //! use s4::S4;
 //! use std::env;
+//! use tokio::io::AsyncReadExt;
 //!
-//! fn main() {
+//! use s4::error::S4Error;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), S4Error> {
 //!     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
 //!
 //!     // setup client
@@ -31,7 +29,7 @@
 //!         name: "eu-west-1".to_string(),
 //!         endpoint,
 //!     };
-//!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key).unwrap();
+//!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key)?;
 //!
 //!     // create bucket
 //!
@@ -40,8 +38,7 @@
 //!             bucket: bucket.clone(),
 //!             ..Default::default()
 //!         })
-//!         .sync()
-//!         .expect("failed to create bucket");
+//!         .await?;
 //!
 //!     // create test objects
 //!
@@ -53,17 +50,18 @@
 //!                 body: Some(obj.as_bytes().to_vec().into()),
 //!                 ..Default::default()
 //!             })
-//!             .sync()
-//!             .expect("failed to store object");
+//!             .await?;
 //!     }
 //!
 //!     // iterate over objects objects (sorted alphabetically)
 //!
-//!     let objects: Vec<_> = client
+//!    let objects: Vec<_> = client
 //!         .iter_objects(&bucket)
-//!         .map(|obj| Ok(obj.key.unwrap()))
-//!         .collect()
-//!         .unwrap();
+//!         .into_stream()
+//!         .map(|res| res.map(|obj| obj.key))
+//!         .try_collect()
+//!         .await?;
+//!    let objects: Vec<_> = objects.into_iter().filter_map(|x| x).collect();
 //!
 //!     assert_eq!(
 //!         objects.as_slice(),
@@ -77,25 +75,41 @@
 //!     );
 //!
 //!     // iterate object and fetch content on the fly (sorted alphabetically)
-//!
-//!     let objects: Vec<(String, Vec<u8>)> = client
+//!     let results: Result<Vec<_>, _> = client
 //!         .iter_get_objects(&bucket)
-//!         .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap().to_vec())))
-//!         .collect()
-//!         .expect("failed to fetch content");
+//!         .into_stream()
+//!         .map(|res| res.map(|(key, obj)| (key, obj.body)))
+//!         .try_collect()
+//!         .await;
+//!
+//!     let futures: Vec<_> = results?
+//!         .into_iter()
+//!         .map(|(key, body)| async move {
+//!             let mut buf = Vec::new();
+//!             if let Some(body) = body {
+//!                 match body.into_async_read().read_to_end(&mut buf).await {
+//!                     Ok(_) => Ok(Some((key, buf))),
+//!                     Err(e) => Err(e),
+//!                 }
+//!             } else {
+//!                 Ok(None)
+//!             }
+//!         })
+//!         .collect();
+//!     let results: Result<Vec<_>, _> = try_join_all(futures).await;
+//!     let objects: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 //!
 //!     for (i, (key, body)) in objects.iter().enumerate() {
 //!         let expected = format!("object_{:02}", i);
 //!         assert_eq!(key, &expected);
 //!         assert_eq!(body.as_slice(), expected.as_bytes());
 //!     }
+//!     Ok(())
 //! }
 //! ```
 
 use crate::error::{S4Error, S4Result};
-use fallible_iterator::FallibleIterator;
-use lazy_static::lazy_static;
-use parking_lot::Mutex;
+use futures::stream::{unfold, Stream};
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
@@ -103,11 +117,6 @@ use rusoto_s3::{
 };
 use std::mem;
 use std::vec::IntoIter;
-use tokio::runtime::Runtime;
-
-lazy_static! {
-    static ref RT: Mutex<Runtime> = Mutex::new(Runtime::new().expect("Failed to start runtime"));
-}
 
 /// Iterator over all objects or objects with a given prefix
 pub struct ObjectIter {
@@ -176,41 +185,48 @@ impl ObjectIter {
             Ok(self.objects.next())
         }
     }
-}
 
-impl FallibleIterator for ObjectIter {
-    type Item = Object;
-    type Error = RusotoError<ListObjectsV2Error>;
+    pub fn into_stream(self) -> impl Stream<Item = RusotoResult<Object, ListObjectsV2Error>> {
+        unfold(self, |mut state| async move {
+            match state.next_object().await {
+                Ok(Some(obj)) => Some((Ok(obj), state)),
+                Err(e) => Some((Err(e), state)),
+                Ok(None) => None,
+            }
+        })
+    }
 
-    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+    pub async fn next(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         if let object @ Some(_) = self.objects.next() {
             Ok(object)
         } else if self.exhausted {
             Ok(None)
         } else {
-            RT.lock().block_on(self.next_objects())?;
+            self.next_objects().await?;
             Ok(self.objects.next())
         }
     }
 
-    fn count(mut self) -> Result<usize, Self::Error> {
+    pub async fn count(mut self) -> Result<usize, RusotoError<ListObjectsV2Error>> {
         let mut count = self.objects.len();
         while !self.exhausted {
-            RT.lock().block_on(self.next_objects())?;
+            self.next_objects().await?;
             count += self.objects.len();
         }
         Ok(count)
     }
 
-    #[inline]
-    fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        RT.lock().block_on(self.last_internal())
+    pub async fn last(mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
+        self.last_internal().await
     }
 
-    fn nth(&mut self, mut n: usize) -> Result<Option<Self::Item>, Self::Error> {
+    pub async fn nth(
+        &mut self,
+        mut n: usize,
+    ) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         while self.objects.len() <= n && !self.exhausted {
             n -= self.objects.len();
-            RT.lock().block_on(self.next_objects())?;
+            self.next_objects().await?;
         }
         Ok(self.objects.nth(n))
     }
@@ -268,38 +284,40 @@ impl GetObjectIter {
     }
 
     pub async fn retrieve_next(&mut self) -> S4Result<Option<(String, GetObjectOutput)>> {
-        let next = self.inner.next()?;
+        let next = self.inner.next().await?;
         self.retrieve(next).await
     }
-}
 
-impl FallibleIterator for GetObjectIter {
-    type Item = (String, GetObjectOutput);
-    type Error = S4Error;
-
-    #[inline]
-    fn next(&mut self) -> S4Result<Option<Self::Item>> {
-        let next = self.inner.next()?;
-        let fut = self.retrieve(next);
-        RT.lock().block_on(fut)
-    }
-
-    #[inline]
-    fn count(self) -> Result<usize, Self::Error> {
-        self.inner.count().map_err(|e| e.into())
-    }
-
-    #[inline]
-    fn last(mut self) -> Result<Option<Self::Item>, Self::Error> {
-        RT.lock().block_on(async {
-            let last = self.inner.last_internal().await?;
-            self.retrieve(last).await
+    pub fn into_stream(self) -> impl Stream<Item = S4Result<(String, GetObjectOutput)>> {
+        unfold(self, |mut state| async move {
+            match state.retrieve_next().await {
+                Ok(Some(obj)) => Some((Ok(obj), state)),
+                Err(e) => Some((Err(e), state)),
+                Ok(None) => None,
+            }
         })
     }
 
     #[inline]
-    fn nth(&mut self, n: usize) -> Result<Option<Self::Item>, Self::Error> {
-        let nth = self.inner.nth(n)?;
-        RT.lock().block_on(self.retrieve(nth))
+    pub async fn next(&mut self) -> S4Result<Option<(String, GetObjectOutput)>> {
+        let next = self.inner.next().await?;
+        self.retrieve(next).await
+    }
+
+    #[inline]
+    pub async fn count(self) -> Result<usize, S4Error> {
+        self.inner.count().await.map_err(|e| e.into())
+    }
+
+    #[inline]
+    pub async fn last(mut self) -> Result<Option<(String, GetObjectOutput)>, S4Error> {
+        let last = self.inner.last_internal().await?;
+        self.retrieve(last).await
+    }
+
+    #[inline]
+    pub async fn nth(&mut self, n: usize) -> Result<Option<(String, GetObjectOutput)>, S4Error> {
+        let nth = self.inner.nth(n).await?;
+        self.retrieve(nth).await
     }
 }
