@@ -14,6 +14,8 @@ use tempdir::TempDir;
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, ErrorKind};
 
+const NUMBER_OF_TESTS: usize = 10;
+
 #[tokio::test]
 async fn target_file_already_exists() {
     let (client, bucket) = common::create_test_bucket().await;
@@ -100,7 +102,7 @@ async fn test_download_to_file() {
         true
     }
     let mut gen = StdThreadGen::new(100);
-    for _ in 0..10 {
+    for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);
         assert!(download_to_file(data).await);
@@ -133,7 +135,7 @@ async fn test_download() {
         true
     }
     let mut gen = StdThreadGen::new(100);
-    for _ in 0..10 {
+    for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);
         assert!(download(data).await);
@@ -245,7 +247,7 @@ async fn test_upload_arbitrary() {
         common::get_body(&client, &bucket, "some_key").await == body
     }
     let mut gen = StdThreadGen::new(100);
-    for _ in 0..10 {
+    for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);
         assert!(upload_arbitrary(data).await);
