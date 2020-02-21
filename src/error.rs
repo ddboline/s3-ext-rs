@@ -1,7 +1,7 @@
-use rusoto_core::{HttpDispatchError, RusotoError};
+use rusoto_core::{request::TlsError, HttpDispatchError, RusotoError};
 use rusoto_s3::{
-    CompleteMultipartUploadError, CreateMultipartUploadError, GetObjectError, ListObjectsV2Error,
-    PutObjectError, UploadPartError,
+    CompleteMultipartUploadError, CreateBucketError, CreateMultipartUploadError, GetObjectError,
+    ListObjectsV2Error, PutObjectError, UploadPartError,
 };
 use std::io::Error as IoError;
 use thiserror::Error;
@@ -46,4 +46,12 @@ pub enum S4Error {
     /// Rusoto UploadPartError
     #[error("Rusoto UploadPartError {0}")]
     UploadPartError(#[from] RusotoError<UploadPartError>),
+
+    /// Rusoto CreateBucketError
+    #[error("Rusoto CreateBucketError {0}")]
+    CreateBucketError(#[from] RusotoError<CreateBucketError>),
+
+    /// Rusoto request TlsError
+    #[error("Rusoto TlsError {0}")]
+    TlsError(#[from] TlsError),
 }
