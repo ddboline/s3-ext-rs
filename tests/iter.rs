@@ -2,8 +2,8 @@ mod common;
 use crate::common::*;
 
 use rusoto_s3::GetObjectOutput;
-use s4::error::S4Result;
-use s4::S4;
+use s3_ext::error::S3ExtResult;
+use s3_ext::S3Ext;
 use tokio::io::AsyncReadExt;
 
 #[tokio::test]
@@ -239,7 +239,10 @@ async fn iter_get_objects_last() {
     assert_key_and_body(client.iter_get_objects(&bucket).last().await, "1001").await;
 }
 
-async fn assert_key_and_body(output: S4Result<Option<(String, GetObjectOutput)>>, expected: &str) {
+async fn assert_key_and_body(
+    output: S3ExtResult<Option<(String, GetObjectOutput)>>,
+    expected: &str,
+) {
     let (key, object) = output.unwrap().unwrap();
 
     let mut body = Vec::new();

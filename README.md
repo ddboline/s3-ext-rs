@@ -1,13 +1,13 @@
-# S4 - Simpler Simple Storage Service
+# S3-Ext-Rs - Simple Storage Service Extensions for Rust
 
-[![crates.io](https://meritbadge.herokuapp.com/s4)](https://crates.io/crates/s4)
+[![crates.io](https://meritbadge.herokuapp.com/s4)](https://crates.io/crates/s3-ext)
 
-:warning: **This create is still under heavy development and not yet production ready.**
+## What is S3-Ext-Rs
 
+This is a fork of the [S4 Crate](https://crates.io/crates/s4), the name has been changed,
+the minimum supported version of rusoto is v0.43.0, and everything is async/await.
 
-## What is S4
-
-S4 is attempt to provide a high-level API for S3. It is based on [Rusoto](https://www.rusoto.org/) and merely extents it's API.
+S3-ext-rs provides a high-level API for S3 building on top of [Rusoto](https://www.rusoto.org/) and extending it's API.
 
 
 ## What is added that *Rusoto* itself doesn't provide
@@ -21,7 +21,7 @@ S4 is attempt to provide a high-level API for S3. It is based on [Rusoto](https:
 
 ## Implementation details
 
-Most functionality is provided by the `S4` trait which is implemented for *Rusoto*'s `S3Client`.
+Most functionality is provided by the `S3Ext` trait which is implemented for *Rusoto*'s `S3Client`.
 
 
 [`Read`]: https://doc.rust-lang.org/nightly/std/io/trait.Read.html

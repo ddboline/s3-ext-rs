@@ -9,14 +9,14 @@
 //! use rand::RngCore;
 //! use rusoto_core::Region;
 //! use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3, S3Client};
-//! use s4::S4;
+//! use s3_ext::S3Ext;
 //! use std::env;
 //! use tokio::io::AsyncReadExt;
 //!
-//! use s4::error::S4Error;
+//! use s3_ext::error::S3ExtError;
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), S4Error> {
+//! async fn main() -> Result<(), S3ExtError> {
 //!     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
 //!
 //!     // setup client
@@ -28,7 +28,7 @@
 //!         name: "eu-west-1".to_string(),
 //!         endpoint,
 //!     };
-//!     let client = s4::new_s3client_with_credentials(region, access_key, secret_key)?;
+//!     let client = s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?;
 //!
 //!     // create bucket
 //!
@@ -107,7 +107,7 @@
 //! }
 //! ```
 
-use crate::error::{S4Error, S4Result};
+use crate::error::{S3ExtError, S3ExtResult};
 use futures::stream::{unfold, Stream};
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
@@ -264,12 +264,12 @@ impl GetObjectIter {
     async fn retrieve(
         &mut self,
         object: Option<Object>,
-    ) -> S4Result<Option<(String, GetObjectOutput)>> {
+    ) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
         match object {
             Some(object) => {
                 self.request.key = object
                     .key
-                    .ok_or_else(|| S4Error::Other("response is missing key"))?;
+                    .ok_or_else(|| S3ExtError::Other("response is missing key"))?;
                 match self.inner.client.get_object(self.request.clone()).await {
                     Ok(o) => {
                         let key = mem::replace(&mut self.request.key, String::new());
@@ -282,12 +282,12 @@ impl GetObjectIter {
         }
     }
 
-    pub async fn retrieve_next(&mut self) -> S4Result<Option<(String, GetObjectOutput)>> {
+    pub async fn retrieve_next(&mut self) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
         let next = self.inner.next().await?;
         self.retrieve(next).await
     }
 
-    pub fn into_stream(self) -> impl Stream<Item = S4Result<(String, GetObjectOutput)>> {
+    pub fn into_stream(self) -> impl Stream<Item = S3ExtResult<(String, GetObjectOutput)>> {
         unfold(self, |mut state| async move {
             match state.retrieve_next().await {
                 Ok(Some(obj)) => Some((Ok(obj), state)),
@@ -298,24 +298,24 @@ impl GetObjectIter {
     }
 
     #[inline]
-    pub async fn next(&mut self) -> S4Result<Option<(String, GetObjectOutput)>> {
+    pub async fn next(&mut self) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
         let next = self.inner.next().await?;
         self.retrieve(next).await
     }
 
     #[inline]
-    pub async fn count(self) -> Result<usize, S4Error> {
+    pub async fn count(self) -> Result<usize, S3ExtError> {
         self.inner.count().await.map_err(|e| e.into())
     }
 
     #[inline]
-    pub async fn last(mut self) -> Result<Option<(String, GetObjectOutput)>, S4Error> {
+    pub async fn last(mut self) -> Result<Option<(String, GetObjectOutput)>, S3ExtError> {
         let last = self.inner.last_internal().await?;
         self.retrieve(last).await
     }
 
     #[inline]
-    pub async fn nth(&mut self, n: usize) -> Result<Option<(String, GetObjectOutput)>, S4Error> {
+    pub async fn nth(&mut self, n: usize) -> Result<Option<(String, GetObjectOutput)>, S3ExtError> {
         let nth = self.inner.nth(n).await?;
         self.retrieve(nth).await
     }

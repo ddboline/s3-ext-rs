@@ -8,8 +8,8 @@ use rusoto_core::RusotoError;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };
-use s4::error::S4Error;
-use s4::S4;
+use s3_ext::error::S3ExtError;
+use s3_ext::S3Ext;
 use tempdir::TempDir;
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, ErrorKind};
@@ -35,7 +35,7 @@ async fn target_file_already_exists() {
         .await;
 
     match result {
-        Err(S4Error::IoError(ref e)) if e.kind() == ErrorKind::AlreadyExists => (),
+        Err(S3ExtError::IoError(ref e)) if e.kind() == ErrorKind::AlreadyExists => (),
         e => panic!("unexpected result: {:?}", e),
     }
 }
@@ -58,7 +58,7 @@ async fn target_file_not_created_when_object_does_not_exist() {
         .await;
 
     match result {
-        Err(S4Error::GetObjectError(RusotoError::Service(GetObjectError::NoSuchKey(_)))) => (),
+        Err(S3ExtError::GetObjectError(RusotoError::Service(GetObjectError::NoSuchKey(_)))) => (),
         e => panic!("unexpected result: {:?}", e),
     }
     assert!(
@@ -182,7 +182,7 @@ async fn no_object_created_when_file_cannot_be_opened_for_upload() {
         )
         .await;
     match result {
-        Err(S4Error::IoError(ref e)) if e.kind() == io::ErrorKind::NotFound => (),
+        Err(S3ExtError::IoError(ref e)) if e.kind() == io::ErrorKind::NotFound => (),
         r => panic!("unexpected result: {:?}", r),
     }
 }
@@ -330,7 +330,7 @@ async fn test_multipart_upload_is_aborted() {
             .await
             .unwrap_err();
         match err {
-            S4Error::IoError(e) => assert_eq!(
+            S3ExtError::IoError(e) => assert_eq!(
                 format!("{}", e.into_inner().unwrap()),
                 "explicit, unconditional error"
             ),

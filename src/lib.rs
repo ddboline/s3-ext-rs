@@ -11,10 +11,10 @@
 //!
 //! ```toml
 //! [dependencies]
-//! s4 = { version = "…", default_features = false }
+//! s3_ext = { version = "…", default_features = false }
 //!
 //! [features]
-//! default = ["s4/native-tls"]
+//! default = ["s3_ext/native-tls"]
 //! ```
 
 #![allow(clippy::default_trait_access)]
@@ -25,17 +25,17 @@
 pub mod iter;
 use crate::iter::{GetObjectIter, ObjectIter};
 pub mod error;
-use crate::error::{S4Error, S4Result};
+use crate::error::{S3ExtError, S3ExtResult};
 mod upload;
 
 use async_trait::async_trait;
 use log::debug;
 use rusoto_core::request::{HttpClient, TlsError};
-use rusoto_core::{Region};
+use rusoto_core::Region;
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
-    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest,
-    PutObjectOutput, PutObjectRequest, S3Client, StreamingBody, S3,
+    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
+    PutObjectRequest, S3Client, StreamingBody, S3,
 };
 use std::convert::AsRef;
 use std::path::Path;
@@ -56,13 +56,13 @@ pub fn new_s3client_with_credentials(
 }
 
 #[async_trait]
-pub trait S4 {
+pub trait S3Ext {
     /// Get object and write it to file `target`
     async fn download_to_file<F>(
         &self,
         source: GetObjectRequest,
         target: F,
-    ) -> S4Result<GetObjectOutput>
+    ) -> S3ExtResult<GetObjectOutput>
     where
         F: AsRef<Path> + Send;
 
@@ -77,7 +77,7 @@ pub trait S4 {
         &self,
         source: F,
         target: PutObjectRequest,
-    ) -> S4Result<PutObjectOutput>
+    ) -> S3ExtResult<PutObjectOutput>
     where
         F: AsRef<Path> + Send;
 
@@ -93,7 +93,7 @@ pub trait S4 {
         source: F,
         target: &PutObjectRequest,
         part_size: usize,
-    ) -> S4Result<CompleteMultipartUploadOutput>
+    ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
         F: AsRef<Path> + Send;
 
@@ -102,7 +102,7 @@ pub trait S4 {
         &self,
         source: GetObjectRequest,
         target: &mut W,
-    ) -> S4Result<GetObjectOutput>
+    ) -> S3ExtResult<GetObjectOutput>
     where
         W: io::AsyncWrite + Unpin + Send;
 
@@ -117,7 +117,7 @@ pub trait S4 {
         &self,
         source: &mut R,
         target: PutObjectRequest,
-    ) -> S4Result<PutObjectOutput>
+    ) -> S3ExtResult<PutObjectOutput>
     where
         R: io::AsyncRead + Unpin + Send;
 
@@ -133,7 +133,7 @@ pub trait S4 {
         source: &mut R,
         target: &PutObjectRequest,
         part_size: usize,
-    ) -> S4Result<CompleteMultipartUploadOutput>
+    ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
         R: io::AsyncRead + Unpin + Send;
 
@@ -165,12 +165,12 @@ pub trait S4 {
 }
 
 #[async_trait]
-impl S4 for S3Client {
+impl S3Ext for S3Client {
     async fn download_to_file<F>(
         &self,
         source: GetObjectRequest,
         target: F,
-    ) -> Result<GetObjectOutput, S4Error>
+    ) -> Result<GetObjectOutput, S3ExtError>
     where
         F: AsRef<Path> + Send,
     {
@@ -191,7 +191,7 @@ impl S4 for S3Client {
         &self,
         source: F,
         target: PutObjectRequest,
-    ) -> S4Result<PutObjectOutput>
+    ) -> S3ExtResult<PutObjectOutput>
     where
         F: AsRef<Path> + Send,
     {
@@ -206,7 +206,7 @@ impl S4 for S3Client {
         source: F,
         target: &PutObjectRequest,
         part_size: usize,
-    ) -> S4Result<CompleteMultipartUploadOutput>
+    ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
         F: AsRef<Path> + Send,
     {
@@ -219,7 +219,7 @@ impl S4 for S3Client {
         &self,
         source: GetObjectRequest,
         mut target: &mut W,
-    ) -> S4Result<GetObjectOutput>
+    ) -> S3ExtResult<GetObjectOutput>
     where
         W: io::AsyncWrite + Unpin + Send,
     {
@@ -230,7 +230,11 @@ impl S4 for S3Client {
     }
 
     #[inline]
-    async fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
+    async fn upload<R>(
+        &self,
+        source: &mut R,
+        target: PutObjectRequest,
+    ) -> S3ExtResult<PutObjectOutput>
     where
         R: io::AsyncRead + Unpin + Send,
     {
@@ -243,7 +247,7 @@ impl S4 for S3Client {
         mut source: &mut R,
         target: &PutObjectRequest,
         part_size: usize,
-    ) -> S4Result<CompleteMultipartUploadOutput>
+    ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
         R: io::AsyncRead + Unpin + Send,
     {
@@ -271,7 +275,7 @@ impl S4 for S3Client {
     }
 }
 
-async fn copy<W>(src: StreamingBody, dest: &mut W) -> S4Result<()>
+async fn copy<W>(src: StreamingBody, dest: &mut W) -> S3ExtResult<()>
 where
     W: io::AsyncWrite + Unpin + Send,
 {

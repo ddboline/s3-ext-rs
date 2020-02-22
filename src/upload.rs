@@ -1,4 +1,4 @@
-use crate::error::{S4Error, S4Result};
+use crate::error::{S3ExtError, S3ExtResult};
 use log::{debug, info, warn};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
@@ -11,7 +11,7 @@ pub(crate) async fn upload<R>(
     client: &S3Client,
     source: &mut R,
     mut target: PutObjectRequest,
-) -> S4Result<PutObjectOutput>
+) -> S3ExtResult<PutObjectOutput>
 where
     R: AsyncRead + Unpin,
 {
@@ -26,7 +26,7 @@ pub(crate) async fn upload_multipart<R>(
     source: &mut R,
     target: &PutObjectRequest,
     part_size: usize,
-) -> S4Result<CompleteMultipartUploadOutput>
+) -> S3ExtResult<CompleteMultipartUploadOutput>
 where
     R: AsyncRead + Unpin,
 {
@@ -64,7 +64,7 @@ where
 
     let upload_id = upload
         .upload_id
-        .ok_or_else(|| S4Error::Other("Missing upload ID"))?;
+        .ok_or_else(|| S3ExtError::Other("Missing upload ID"))?;
 
     debug!(
         "multi-part upload {:?} started (bucket: {}, key: {})",
@@ -103,7 +103,7 @@ async fn upload_multipart_needs_abort_on_error<R>(
     target: &PutObjectRequest,
     part_size: usize,
     upload_id: &str,
-) -> S4Result<CompleteMultipartUploadOutput>
+) -> S3ExtResult<CompleteMultipartUploadOutput>
 where
     R: AsyncRead + Unpin,
 {
