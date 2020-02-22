@@ -1,7 +1,7 @@
 mod common;
 use crate::common::ReaderWithError;
 
-use quickcheck::{RngCore, StdThreadGen};
+use rand::{thread_rng, RngCore};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rusoto_core::RusotoError;
@@ -101,7 +101,7 @@ async fn test_download_to_file() {
         assert_eq!(buf, data);
         true
     }
-    let mut gen = StdThreadGen::new(100);
+    let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);
@@ -134,7 +134,7 @@ async fn test_download() {
         assert_eq!(data, target);
         true
     }
-    let mut gen = StdThreadGen::new(100);
+    let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);
@@ -246,7 +246,7 @@ async fn test_upload_arbitrary() {
 
         common::get_body(&client, &bucket, "some_key").await == body
     }
-    let mut gen = StdThreadGen::new(100);
+    let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
         let mut data = Vec::new();
         gen.fill_bytes(&mut data);

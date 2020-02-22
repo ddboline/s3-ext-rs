@@ -3,7 +3,6 @@
 //! # Example
 //!
 //! ```
-//! use fallible_iterator::FallibleIterator;
 //! use futures::stream::{Stream, StreamExt, TryStreamExt};
 //! use futures::future::try_join_all;
 //! use std::future::Future;

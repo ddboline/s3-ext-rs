@@ -16,7 +16,6 @@ github = { repository = "pgerber/s4" }
 [dependencies]
 thiserror = "1.0"
 log = "0.4"
-fallible-iterator = "0.2"
 futures = "0.3"
 rusoto_core = { version = "0.43.0-beta.1", default_features = false }
 rusoto_credential = {version = "0.43.0-beta.1"}
@@ -31,7 +30,6 @@ tempdir = "0.3"
 rand = "0.7"
 rand_xorshift = "0.2"
 env_logger = "0.7"
-quickcheck = "0.9"
 
 [features]
 default = ["rustls"]
