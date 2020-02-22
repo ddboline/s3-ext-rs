@@ -1,13 +1,13 @@
-# S3-Ext-Rs - Simple Storage Service Extensions for Rust
+# S3-Ext - Simple Storage Service Extensions for Rust
 
 [![crates.io](https://meritbadge.herokuapp.com/s4)](https://crates.io/crates/s3-ext)
 
-## What is S3-Ext-Rs
+## What is S3-Ext
 
 This is a fork of the [S4 Crate](https://crates.io/crates/s4), the name has been changed,
 the minimum supported version of rusoto is v0.43.0, and everything is async/await.
 
-S3-ext-rs provides a high-level API for S3 building on top of [Rusoto](https://www.rusoto.org/) and extending it's API.
+S3-ext provides a high-level API for S3 building on top of [Rusoto](https://www.rusoto.org/) and extending it's API.
 
 
 ## What is added that *Rusoto* itself doesn't provide
