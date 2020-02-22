@@ -1,9 +1,10 @@
-use rusoto_core::{HttpDispatchError, RusotoError};
+use rusoto_core::{request::TlsError, HttpDispatchError, RusotoError};
 use rusoto_s3::{
-    CompleteMultipartUploadError, CreateMultipartUploadError, GetObjectError, ListObjectsV2Error,
-    PutObjectError, UploadPartError,
+    CompleteMultipartUploadError, CreateBucketError, CreateMultipartUploadError, GetObjectError,
+    ListObjectsV2Error, PutObjectError, UploadPartError,
 };
 use std::io::Error as IoError;
+use thiserror::Error;
 
 pub type S4Result<T> = Result<T, S4Error>;
 
@@ -11,30 +12,46 @@ pub type S4Result<T> = Result<T, S4Error>;
 #[derive(Debug, Error)]
 pub enum S4Error {
     /// Unknown error
-    #[error(no_from, non_std)]
+    #[error("Unknown error {0}")]
     Other(&'static str),
 
     /// I/O Error
-    IoError(IoError),
+    #[error("I/O Error {0}")]
+    IoError(#[from] IoError),
 
     /// Rusoto CompleteMultipartUploadError
-    CompleteMultipartUploadError(RusotoError<CompleteMultipartUploadError>),
+    #[error("Rusoto CompleteMultipartUploadError {0}")]
+    CompleteMultipartUploadError(#[from] RusotoError<CompleteMultipartUploadError>),
 
     /// Rusoto CreateMultipartUploadError
-    CreateMultipartUploadError(RusotoError<CreateMultipartUploadError>),
+    #[error("Rusoto CreateMultipartUploadError {0}")]
+    CreateMultipartUploadError(#[from] RusotoError<CreateMultipartUploadError>),
 
     /// Rusoto GetObjectError
-    GetObjectError(RusotoError<GetObjectError>),
+    #[error("Rusoto GetObjectError {0}")]
+    GetObjectError(#[from] RusotoError<GetObjectError>),
 
     /// Rusoto HttpDispatchError
-    HttpDispatchError(RusotoError<HttpDispatchError>),
+    #[error("Rusoto HttpDispatchError {0}")]
+    HttpDispatchError(#[from] RusotoError<HttpDispatchError>),
 
     /// Rusoto ListObjectV2Error
-    ListObjectV2Error(RusotoError<ListObjectsV2Error>),
+    #[error("Rusoto ListObjectV2Error {0}")]
+    ListObjectV2Error(#[from] RusotoError<ListObjectsV2Error>),
 
     /// Rusoto PutObjectError
-    PutObjectError(RusotoError<PutObjectError>),
+    #[error("Rusoto PutObjectError {0}")]
+    PutObjectError(#[from] RusotoError<PutObjectError>),
 
     /// Rusoto UploadPartError
-    UploadPartError(RusotoError<UploadPartError>),
+    #[error("Rusoto UploadPartError {0}")]
+    UploadPartError(#[from] RusotoError<UploadPartError>),
+
+    /// Rusoto CreateBucketError
+    #[error("Rusoto CreateBucketError {0}")]
+    CreateBucketError(#[from] RusotoError<CreateBucketError>),
+
+    /// Rusoto request TlsError
+    #[error("Rusoto TlsError {0}")]
+    TlsError(#[from] TlsError),
 }

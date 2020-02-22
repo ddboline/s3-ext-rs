@@ -22,34 +22,25 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 
-#[macro_use]
-extern crate derive_error;
-extern crate fallible_iterator;
-extern crate futures;
-#[macro_use]
-extern crate log;
-extern crate rusoto_core;
-extern crate rusoto_credential;
-extern crate rusoto_s3;
-extern crate tokio_io;
-
 pub mod iter;
 use crate::iter::{GetObjectIter, ObjectIter};
 pub mod error;
 use crate::error::{S4Error, S4Result};
 mod upload;
 
+use async_trait::async_trait;
+use log::debug;
 use rusoto_core::request::{HttpClient, TlsError};
-use rusoto_core::Region;
+use rusoto_core::{Region};
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
-    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
-    PutObjectRequest, S3Client, StreamingBody, S3,
+    CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest,
+    PutObjectOutput, PutObjectRequest, S3Client, StreamingBody, S3,
 };
 use std::convert::AsRef;
-use std::fs::{File, OpenOptions};
-use std::io;
 use std::path::Path;
+use tokio::fs::{File, OpenOptions};
+use tokio::io;
 
 /// Create client using given static access/secret keys
 pub fn new_s3client_with_credentials(
@@ -64,11 +55,16 @@ pub fn new_s3client_with_credentials(
     ))
 }
 
+#[async_trait]
 pub trait S4 {
     /// Get object and write it to file `target`
-    fn download_to_file<F>(&self, source: GetObjectRequest, target: F) -> S4Result<GetObjectOutput>
+    async fn download_to_file<F>(
+        &self,
+        source: GetObjectRequest,
+        target: F,
+    ) -> S4Result<GetObjectOutput>
     where
-        F: AsRef<Path>;
+        F: AsRef<Path> + Send;
 
     /// Upload content of file to S3
     ///
@@ -77,9 +73,13 @@ pub trait S4 {
     /// The current implementation is incomplete. For now, the following limitation applies:
     ///
     /// * The full content of `source` is copied into memory.
-    fn upload_from_file<F>(&self, source: F, target: PutObjectRequest) -> S4Result<PutObjectOutput>
+    async fn upload_from_file<F>(
+        &self,
+        source: F,
+        target: PutObjectRequest,
+    ) -> S4Result<PutObjectOutput>
     where
-        F: AsRef<Path>;
+        F: AsRef<Path> + Send;
 
     /// Upload content of file to S3 using multi-part upload
     ///
@@ -88,19 +88,23 @@ pub trait S4 {
     /// The current implementation is incomplete. For now, the following limitation applies:
     ///
     /// * The full content of a part is copied into memory.
-    fn upload_from_file_multipart<F>(
+    async fn upload_from_file_multipart<F>(
         &self,
         source: F,
         target: &PutObjectRequest,
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        F: AsRef<Path>;
+        F: AsRef<Path> + Send;
 
     /// Get object and write it to `target`
-    fn download<W>(&self, source: GetObjectRequest, target: &mut W) -> S4Result<GetObjectOutput>
+    async fn download<W>(
+        &self,
+        source: GetObjectRequest,
+        target: &mut W,
+    ) -> S4Result<GetObjectOutput>
     where
-        W: io::Write;
+        W: io::AsyncWrite + Unpin + Send;
 
     /// Read `source` and upload it to S3
     ///
@@ -109,9 +113,13 @@ pub trait S4 {
     /// The current implementation is incomplete. For now, the following limitation applies:
     ///
     /// * The full content of `source` is copied into memory.
-    fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
+    async fn upload<R>(
+        &self,
+        source: &mut R,
+        target: PutObjectRequest,
+    ) -> S4Result<PutObjectOutput>
     where
-        R: io::Read;
+        R: io::AsyncRead + Unpin + Send;
 
     /// Read `source` and upload it to S3 using multi-part upload
     ///
@@ -120,16 +128,19 @@ pub trait S4 {
     /// The current implementation is incomplete. For now, the following limitation applies:
     ///
     /// * The full content of a part is copied into memory.
-    fn upload_multipart<R>(
+    async fn upload_multipart<R>(
         &self,
         source: &mut R,
         target: &PutObjectRequest,
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        R: io::Read;
+        R: io::AsyncRead + Unpin + Send;
 
     /// Iterator over all objects
+    /// Note: ObjectIter doesn't implement Iterator, instead, it has several useful methods (all async),
+    /// which match methods found on an actual iterator, and you can construct a stream from it
+    /// via the `into_stream` method.
     ///
     /// Objects are lexicographically sorted by their key.
     fn iter_objects(&self, bucket: &str) -> ObjectIter;
@@ -140,6 +151,9 @@ pub trait S4 {
     fn iter_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectIter;
 
     /// Iterator over all objects; fetching objects as needed
+    /// Note: GetObjectIter isn't an iterator, instead, it has several useful methods (all async),
+    /// which match methods found on an actual iterator, and you can construct a stream from it
+    /// via the `into_stream` method.
     ///
     /// Objects are lexicographically sorted by their key.
     fn iter_get_objects(&self, bucket: &str) -> GetObjectIter;
@@ -150,80 +164,90 @@ pub trait S4 {
     fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
 }
 
-impl<'a> S4 for S3Client {
-    fn download_to_file<F>(
+#[async_trait]
+impl S4 for S3Client {
+    async fn download_to_file<F>(
         &self,
         source: GetObjectRequest,
         target: F,
     ) -> Result<GetObjectOutput, S4Error>
     where
-        F: AsRef<Path>,
+        F: AsRef<Path> + Send,
     {
         debug!("downloading to file {:?}", target.as_ref());
-        let mut resp = self.get_object(source).sync()?;
+        let mut resp = self.get_object(source).await?;
         let body = resp.body.take().expect("no body");
         let mut target = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(target)?;
-        copy(body, &mut target)?;
+            .open(target)
+            .await?;
+        copy(body, &mut target).await?;
         Ok(resp)
     }
 
     #[inline]
-    fn upload_from_file<F>(&self, source: F, target: PutObjectRequest) -> S4Result<PutObjectOutput>
+    async fn upload_from_file<F>(
+        &self,
+        source: F,
+        target: PutObjectRequest,
+    ) -> S4Result<PutObjectOutput>
     where
-        F: AsRef<Path>,
+        F: AsRef<Path> + Send,
     {
         debug!("uploading file {:?}", source.as_ref());
-        let mut source = File::open(source)?;
-        upload::upload(&self, &mut source, target)
+        let mut source = File::open(source).await?;
+        upload::upload(&self, &mut source, target).await
     }
 
     #[inline]
-    fn upload_from_file_multipart<F>(
+    async fn upload_from_file_multipart<F>(
         &self,
         source: F,
         target: &PutObjectRequest,
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        F: AsRef<Path>,
+        F: AsRef<Path> + Send,
     {
         debug!("uploading file {:?}", source.as_ref());
-        let mut source = File::open(source)?;
-        upload::upload_multipart(&self, &mut source, target, part_size)
+        let mut source = File::open(source).await?;
+        upload::upload_multipart(&self, &mut source, target, part_size).await
     }
 
-    fn download<W>(&self, source: GetObjectRequest, mut target: &mut W) -> S4Result<GetObjectOutput>
+    async fn download<W>(
+        &self,
+        source: GetObjectRequest,
+        mut target: &mut W,
+    ) -> S4Result<GetObjectOutput>
     where
-        W: io::Write,
+        W: io::AsyncWrite + Unpin + Send,
     {
-        let mut resp = self.get_object(source).sync()?;
+        let mut resp = self.get_object(source).await?;
         let body = resp.body.take().expect("no body");
-        copy(body, &mut target)?;
+        copy(body, &mut target).await?;
         Ok(resp)
     }
 
     #[inline]
-    fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
+    async fn upload<R>(&self, source: &mut R, target: PutObjectRequest) -> S4Result<PutObjectOutput>
     where
-        R: io::Read,
+        R: io::AsyncRead + Unpin + Send,
     {
-        upload::upload(&self, source, target)
+        upload::upload(&self, source, target).await
     }
 
     #[inline]
-    fn upload_multipart<R>(
+    async fn upload_multipart<R>(
         &self,
         mut source: &mut R,
         target: &PutObjectRequest,
         part_size: usize,
     ) -> S4Result<CompleteMultipartUploadOutput>
     where
-        R: io::Read,
+        R: io::AsyncRead + Unpin + Send,
     {
-        upload::upload_multipart(&self, &mut source, target, part_size)
+        upload::upload_multipart(&self, &mut source, target, part_size).await
     }
 
     #[inline]
@@ -247,10 +271,10 @@ impl<'a> S4 for S3Client {
     }
 }
 
-fn copy<W>(src: StreamingBody, dest: &mut W) -> S4Result<()>
+async fn copy<W>(src: StreamingBody, dest: &mut W) -> S4Result<()>
 where
-    W: io::Write,
+    W: io::AsyncWrite + Unpin + Send,
 {
-    io::copy(&mut src.into_blocking_read(), dest)?;
+    io::copy(&mut src.into_async_read(), dest).await?;
     Ok(())
 }

@@ -1,33 +1,34 @@
 use crate::error::{S4Error, S4Result};
+use log::{debug, info, warn};
 use rusoto_s3::{
     AbortMultipartUploadRequest, CompleteMultipartUploadOutput, CompleteMultipartUploadRequest,
     CompletedMultipartUpload, CompletedPart, CreateMultipartUploadRequest, PutObjectOutput,
     PutObjectRequest, S3Client, UploadPartRequest, S3,
 };
-use std::io::Read;
+use tokio::io::{AsyncRead, AsyncReadExt};
 
-pub(crate) fn upload<R>(
+pub(crate) async fn upload<R>(
     client: &S3Client,
     source: &mut R,
     mut target: PutObjectRequest,
 ) -> S4Result<PutObjectOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
     let mut content = Vec::new();
-    source.read_to_end(&mut content)?;
+    source.read_to_end(&mut content).await?;
     target.body = Some(content.into());
-    client.put_object(target).sync().map_err(|e| e.into())
+    client.put_object(target).await.map_err(|e| e.into())
 }
 
-pub(crate) fn upload_multipart<R>(
+pub(crate) async fn upload_multipart<R>(
     client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
     part_size: usize,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
     let upload = client
         .create_multipart_upload(CreateMultipartUploadRequest {
@@ -57,8 +58,9 @@ where
             storage_class: target.storage_class.to_owned(),
             tagging: target.tagging.to_owned(),
             website_redirect_location: target.website_redirect_location.to_owned(),
+            ssekms_encryption_context: target.ssekms_encryption_context.to_owned(),
         })
-        .sync()?;
+        .await?;
 
     let upload_id = upload
         .upload_id
@@ -69,7 +71,9 @@ where
         upload_id, target.bucket, target.key
     );
 
-    match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id) {
+    match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id)
+        .await
+    {
         ok @ Ok(_) => ok,
         err @ Err(_) => {
             info!(
@@ -83,7 +87,7 @@ where
                     request_payer: target.request_payer.to_owned(),
                     upload_id,
                 })
-                .sync()
+                .await
             {
                 warn!("ignoring failure to abort multi-part upload: {:?}", e);
             };
@@ -93,7 +97,7 @@ where
 }
 
 // Upload needs to be aborted if this function fails
-fn upload_multipart_needs_abort_on_error<R>(
+async fn upload_multipart_needs_abort_on_error<R>(
     client: &S3Client,
     source: &mut R,
     target: &PutObjectRequest,
@@ -101,12 +105,12 @@ fn upload_multipart_needs_abort_on_error<R>(
     upload_id: &str,
 ) -> S4Result<CompleteMultipartUploadOutput>
 where
-    R: Read,
+    R: AsyncRead + Unpin,
 {
     let mut parts = Vec::new();
     for part_number in 1.. {
         let mut body = vec![0; part_size];
-        let size = source.read(&mut body[..])?;
+        let size = source.read(&mut body[..]).await?;
         if size == 0 {
             break;
         }
@@ -126,7 +130,7 @@ where
                 sse_customer_key_md5: target.sse_customer_key_md5.clone(),
                 upload_id: upload_id.to_owned(),
             })
-            .sync()?;
+            .await?;
 
         parts.push(CompletedPart {
             e_tag: part.e_tag,
@@ -142,6 +146,6 @@ where
             request_payer: target.request_payer.to_owned(),
             upload_id: upload_id.to_owned(),
         })
-        .sync()
+        .await
         .map_err(|e| e.into())
 }

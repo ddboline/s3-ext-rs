@@ -1,21 +1,15 @@
-extern crate fallible_iterator;
-extern crate futures;
-extern crate rand;
-extern crate rusoto_core;
-extern crate rusoto_s3;
-extern crate s4;
-
-use fallible_iterator::FallibleIterator;
-use futures::stream::Stream;
-use futures::Future;
+use futures::future::try_join_all;
+use futures::stream::{StreamExt, TryStreamExt};
 use rand::RngCore;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
+use s4::error::S4Error;
 use s4::S4;
 use std::env;
+use tokio::io::AsyncReadExt;
 
-#[test]
-fn main() {
+#[tokio::test]
+async fn test_iter_example() -> Result<(), S4Error> {
     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
 
     // setup client
@@ -27,7 +21,7 @@ fn main() {
         name: "eu-west-1".to_string(),
         endpoint,
     };
-    let client = s4::new_s3client_with_credentials(region, access_key, secret_key).unwrap();
+    let client = s4::new_s3client_with_credentials(region, access_key, secret_key)?;
 
     // create bucket
 
@@ -36,8 +30,7 @@ fn main() {
             bucket: bucket.clone(),
             ..Default::default()
         })
-        .sync()
-        .expect("failed to create bucket");
+        .await?;
 
     // create test objects
 
@@ -49,17 +42,18 @@ fn main() {
                 body: Some(obj.as_bytes().to_vec().into()),
                 ..Default::default()
             })
-            .sync()
-            .expect("failed to store object");
+            .await
+            .map(|_| ())?;
     }
 
     // iterate over objects objects (sorted alphabetically)
-
     let objects: Vec<_> = client
         .iter_objects(&bucket)
-        .map(|obj| Ok(obj.key.unwrap()))
-        .collect()
-        .expect("failed to fetch list of objects");
+        .into_stream()
+        .map(|res| res.map(|obj| obj.key))
+        .try_collect()
+        .await?;
+    let objects: Vec<_> = objects.into_iter().filter_map(|x| x).collect();
 
     assert_eq!(
         objects.as_slice(),
@@ -73,15 +67,32 @@ fn main() {
     );
 
     // iterate object and fetch content on the fly (sorted alphabetically)
-
-    let bodies: Vec<_> = client
+    let results: Result<Vec<_>, _> = client
         .iter_get_objects(&bucket)
-        .map(|(key, obj)| Ok((key, obj.body.unwrap().concat2().wait().unwrap().to_vec())))
-        .collect()
-        .expect("failed to fetch content");
+        .into_stream()
+        .map(|res| res.map(|(key, obj)| (key, obj.body)))
+        .try_collect()
+        .await;
+
+    let futures: Vec<_> = results?
+        .into_iter()
+        .map(|(key, body)| async move {
+            let mut buf = Vec::new();
+            if let Some(body) = body {
+                match body.into_async_read().read_to_end(&mut buf).await {
+                    Ok(_) => Ok(Some((key, buf))),
+                    Err(e) => Err(e),
+                }
+            } else {
+                Ok(None)
+            }
+        })
+        .collect();
+    let results: Result<Vec<_>, _> = try_join_all(futures).await;
+    let bodies: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
 
     assert_eq!(
-        bodies,
+        bodies.as_slice(),
         &[
             ("object_00".to_string(), b"object_00".to_vec()),
             ("object_01".to_string(), b"object_01".to_vec()),
@@ -90,4 +101,5 @@ fn main() {
             ("object_04".to_string(), b"object_04".to_vec()),
         ]
     );
+    Ok(())
 }

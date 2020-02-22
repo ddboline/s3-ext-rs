@@ -3,7 +3,7 @@ name = "s4"
 description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
 version = "0.0.15"
 documentation = "https://docs.rs/s4"
-repository = "https://gitlab.com/pgerber/s4"
+repository = "https://gitlab.com/ddboline/s4"
 authors = ["Peter Gerber <peter@arbitrary.ch>"]
 license = "LGPL-3.0+"
 readme = "README.md"
@@ -11,24 +11,25 @@ keywords = ["AWS", "S3"]
 edition = "2018"
 
 [badges]
-gitlab = { repository = "pgerber/s4" }
+github = { repository = "pgerber/s4" }
 
 [dependencies]
-derive-error = "0.0"
+thiserror = "1.0"
 log = "0.4"
-fallible-iterator = "0.2"
-futures = "0.1"
-rusoto_core = { version = "0.40", default_features = false }
-rusoto_credential = "0.40"
-rusoto_s3 = { version = "0.40", default_features = false }
-tokio-io = "0.1"
+futures = "0.3"
+rusoto_core = { version = "0.43.0-beta.1", default_features = false }
+rusoto_credential = {version = "0.43.0-beta.1"}
+rusoto_s3 = { version = "0.43.0-beta.1", default_features = false }
+tokio = {version="0.2", features=["fs", "io-util", "stream"]}
+async-trait = "0.1"
+parking_lot = "0.10"
+lazy_static = "1.4"
 
 [dev-dependencies]
 tempdir = "0.3"
-rand = "0.6"
-rand_xorshift = "0.1"
-env_logger = "0.6"
-quickcheck = "0.8"
+rand = "0.7"
+rand_xorshift = "0.2"
+env_logger = "0.7"
 
 [features]
 default = ["rustls"]
