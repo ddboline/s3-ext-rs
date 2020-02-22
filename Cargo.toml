@@ -1,17 +1,17 @@
 [package]
-name = "s4"
+name = "s3-ext"
 description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
-version = "0.0.15"
-documentation = "https://docs.rs/s4"
-repository = "https://gitlab.com/ddboline/s4"
-authors = ["Peter Gerber <peter@arbitrary.ch>"]
+version = "0.1.0"
+documentation = "https://docs.rs/s3-ext"
+repository = "https://gitlab.com/ddboline/s3-ext"
+authors = ["Daniel Boline <ddboline@gmail.com>", "Peter Gerber <peter@arbitrary.ch>"]
 license = "LGPL-3.0+"
 readme = "README.md"
 keywords = ["AWS", "S3"]
 edition = "2018"
 
 [badges]
-github = { repository = "pgerber/s4" }
+github = { repository = "ddboline/s3-ext" }
 
 [dependencies]
 thiserror = "1.0"

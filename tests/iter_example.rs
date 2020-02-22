@@ -3,13 +3,13 @@ use futures::stream::{StreamExt, TryStreamExt};
 use rand::RngCore;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
-use s4::error::S4Error;
-use s4::S4;
+use s3_ext::error::S3ExtError;
+use s3_ext::S3Ext;
 use std::env;
 use tokio::io::AsyncReadExt;
 
 #[tokio::test]
-async fn test_iter_example() -> Result<(), S4Error> {
+async fn test_iter_example() -> Result<(), S3ExtError> {
     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
 
     // setup client
@@ -21,7 +21,7 @@ async fn test_iter_example() -> Result<(), S4Error> {
         name: "eu-west-1".to_string(),
         endpoint,
     };
-    let client = s4::new_s3client_with_credentials(region, access_key, secret_key)?;
+    let client = s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?;
 
     // create bucket
 

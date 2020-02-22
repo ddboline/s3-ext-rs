@@ -7,7 +7,7 @@ use rand::distributions::Alphanumeric;
 use rand::Rng;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3Client, S3};
-use s4::new_s3client_with_credentials;
+use s3_ext::new_s3client_with_credentials;
 use std::env;
 use tokio::io::{self, AsyncRead, AsyncReadExt};
 
@@ -73,7 +73,7 @@ pub async fn get_body(client: &S3Client, bucket: &str, key: &str) -> Vec<u8> {
 
 pub fn init_logger() {
     let _ = env_logger::Builder::from_default_env()
-        .filter(Some("s4"), log::LevelFilter::Debug)
+        .filter(Some("s3_ext"), log::LevelFilter::Debug)
         .try_init();
 }
 

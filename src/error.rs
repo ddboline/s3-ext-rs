@@ -6,11 +6,11 @@ use rusoto_s3::{
 use std::io::Error as IoError;
 use thiserror::Error;
 
-pub type S4Result<T> = Result<T, S4Error>;
+pub type S3ExtResult<T> = Result<T, S3ExtError>;
 
-/// Errors returned by S4 extensions to Rusoto
+/// Errors returned by S3Ext
 #[derive(Debug, Error)]
-pub enum S4Error {
+pub enum S3ExtError {
     /// Unknown error
     #[error("Unknown error {0}")]
     Other(&'static str),
