@@ -24,6 +24,7 @@ tokio = {version="0.2", features=["fs", "io-util", "stream"]}
 async-trait = "0.1"
 parking_lot = "0.10"
 lazy_static = "1.4"
+pin-utils = "0.1.0-alpha.4"
 
 [dev-dependencies]
 tempdir = "0.3"

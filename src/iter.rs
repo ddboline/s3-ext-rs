@@ -111,13 +111,19 @@ use crate::error::{S3ExtError, S3ExtResult};
 use futures::stream::{unfold, Stream};
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
-    GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Request, Object, S3Client,
-    S3,
+    GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Output,
+    ListObjectsV2Request, Object, S3Client, S3,
 };
 use std::mem;
 use std::vec::IntoIter;
+use futures::ready;
+use futures::task::{Context, Poll};
+use pin_utils::{unsafe_pinned, unsafe_unpinned};
+use std::future::Future;
+use std::pin::Pin;
 
 /// Iterator over all objects or objects with a given prefix
+#[derive(Clone)]
 pub struct ObjectIter {
     client: S3Client,
     request: ListObjectsV2Request,
@@ -125,19 +131,8 @@ pub struct ObjectIter {
     exhausted: bool,
 }
 
-impl Clone for ObjectIter {
-    fn clone(&self) -> Self {
-        ObjectIter {
-            client: self.client.clone(),
-            request: self.request.clone(),
-            objects: self.objects.clone(),
-            exhausted: self.exhausted,
-        }
-    }
-}
-
 impl ObjectIter {
-    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         let request = ListObjectsV2Request {
             bucket: bucket.to_owned(),
             max_keys: Some(1000),
@@ -155,12 +150,16 @@ impl ObjectIter {
 
     async fn next_objects(&mut self) -> RusotoResult<(), ListObjectsV2Error> {
         let resp = self.client.list_objects_v2(self.request.clone()).await?;
+        self.update_objects(resp);
+        Ok(())
+    }
+
+    fn update_objects(&mut self, resp: ListObjectsV2Output) {
         self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
         match resp.next_continuation_token {
             next @ Some(_) => self.request.continuation_token = next,
             None => self.exhausted = true,
         };
-        Ok(())
     }
 
     async fn last_internal(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
@@ -172,31 +171,6 @@ impl ObjectIter {
             }
         }
         Ok(objects.last())
-    }
-
-    pub async fn next_object(&mut self) -> Option<RusotoResult<Object, ListObjectsV2Error>> {
-        if let Some(object) = self.objects.next() {
-            Some(Ok(object))
-        } else {
-            if let Err(e) = self.next_objects().await {
-                return Some(Err(e.into()));
-            }
-            if let Some(object) = self.objects.next() {
-                Some(Ok(object))
-            } else {
-                None
-            }
-        }
-    }
-
-    pub fn into_stream(self) -> impl Stream<Item = RusotoResult<Object, ListObjectsV2Error>> {
-        unfold(self, |mut state| async move {
-            if let Some(x) = state.next_object().await {
-                Some((x, state))
-            } else {
-                None
-            }
-        })
     }
 
     pub async fn next(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
@@ -235,14 +209,64 @@ impl ObjectIter {
     }
 }
 
-use std::pin::Pin;
-use futures::ready;
-use futures::task::{Context, Poll};
+type ObjResult = RusotoResult<ListObjectsV2Output, ListObjectsV2Error>;
+type NextObjFuture = Pin<Box<dyn Future<Output = ObjResult>>>;
 
-impl Stream for ObjectIter {
+pub struct ObjectStream {
+    iter: ObjectIter,
+    fut: Option<NextObjFuture>,
+}
+
+impl ObjectStream {
+    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+        Self {
+            iter: ObjectIter::new(client, bucket, prefix),
+            fut: None,
+        }
+    }
+
+    pub fn get_iter(&self) -> &ObjectIter {
+        &self.iter
+    }
+
+    async fn get_objects(
+        client: S3Client,
+        request: ListObjectsV2Request,
+    ) -> RusotoResult<ListObjectsV2Output, ListObjectsV2Error> {
+        client.list_objects_v2(request).await
+    }
+
+    unsafe_unpinned!(iter: ObjectIter);
+    unsafe_pinned!(fut: Option<NextObjFuture>);
+}
+
+impl Stream for ObjectStream {
     type Item = RusotoResult<Object, ListObjectsV2Error>;
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        self.next_object().deref_mut()
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        if self.as_mut().fut().is_none() {
+            if let Some(object) = self.as_mut().iter().objects.next() {
+                return Poll::Ready(Some(Ok(object)));
+            } else {
+                let client = self.as_mut().iter().client.clone();
+                let request = self.as_mut().iter().request.clone();
+                self.as_mut()
+                    .fut()
+                    .set(Some(Box::pin(Self::get_objects(client, request))));
+            }
+        }
+
+        let result = ready!(self.as_mut().fut().as_pin_mut().unwrap().poll(cx));
+        self.as_mut().fut().set(None);
+
+        match result {
+            Ok(resp) => self.as_mut().iter().update_objects(resp),
+            Err(e) => return Poll::Ready(Some(Err(e))),
+        }
+        if let Some(object) = self.as_mut().iter().objects.next() {
+            Poll::Ready(Some(Ok(object)))
+        } else {
+            Poll::Ready(None)
+        }
     }
 }
 
@@ -334,4 +358,9 @@ impl GetObjectIter {
         let nth = self.inner.nth(n).await?;
         self.retrieve(nth).await
     }
+}
+
+pub struct GetObjectStream {
+    iter: GetObjectIter,
+    fut: Option<NextObjFuture>,
 }
