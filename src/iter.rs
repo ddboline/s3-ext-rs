@@ -108,19 +108,19 @@
 //! ```
 
 use crate::error::{S3ExtError, S3ExtResult};
-use futures::stream::{unfold, Stream};
-use rusoto_core::{RusotoError, RusotoResult};
-use rusoto_s3::{
-    GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Output,
-    ListObjectsV2Request, Object, S3Client, S3,
-};
-use std::mem;
-use std::vec::IntoIter;
 use futures::ready;
+use futures::stream::{unfold, Stream};
 use futures::task::{Context, Poll};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
+use rusoto_core::{RusotoError, RusotoResult};
+use rusoto_s3::{
+    GetObjectError, GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Output,
+    ListObjectsV2Request, Object, S3Client, S3,
+};
 use std::future::Future;
+use std::mem;
 use std::pin::Pin;
+use std::vec::IntoIter;
 
 /// Iterator over all objects or objects with a given prefix
 #[derive(Clone)]
@@ -273,30 +273,17 @@ impl Stream for ObjectStream {
 /// Iterator retrieving all objects or objects with a given prefix
 ///
 /// The iterator yields tuples of `(key, object)`.
+#[derive(Clone)]
 pub struct GetObjectIter {
     inner: ObjectIter,
-    request: GetObjectRequest,
-}
-
-impl Clone for GetObjectIter {
-    fn clone(&self) -> Self {
-        GetObjectIter {
-            inner: self.inner.clone(),
-            request: self.request.clone(),
-        }
-    }
+    bucket: String,
 }
 
 impl GetObjectIter {
     pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
-        let request = GetObjectRequest {
-            bucket: bucket.to_owned(),
-            ..Default::default()
-        };
-
         GetObjectIter {
             inner: ObjectIter::new(client, bucket, prefix),
-            request,
+            bucket: bucket.to_owned(),
         }
     }
 
@@ -306,12 +293,17 @@ impl GetObjectIter {
     ) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
         match object {
             Some(object) => {
-                self.request.key = object
+                let key = object
                     .key
                     .ok_or_else(|| S3ExtError::Other("response is missing key"))?;
-                match self.inner.client.get_object(self.request.clone()).await {
+                let request = GetObjectRequest {
+                    bucket: self.bucket.clone(),
+                    key,
+                    ..Default::default()
+                };
+                match self.inner.client.get_object(request.clone()).await {
                     Ok(o) => {
-                        let key = mem::replace(&mut self.request.key, String::new());
+                        let key = request.key;
                         Ok(Some((key, o)))
                     }
                     Err(e) => Err(e.into()),
@@ -360,7 +352,100 @@ impl GetObjectIter {
     }
 }
 
+type GetObjResult = S3ExtResult<GetObjectOutput>;
+type NextGetObjFuture = Pin<Box<dyn Future<Output = GetObjResult>>>;
+
 pub struct GetObjectStream {
     iter: GetObjectIter,
-    fut: Option<NextObjFuture>,
+    next: Option<Object>,
+    key: Option<String>,
+    fut0: Option<NextObjFuture>,
+    fut1: Option<NextGetObjFuture>,
+}
+
+impl GetObjectStream {
+    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+        Self {
+            iter: GetObjectIter::new(client, bucket, prefix),
+            next: None,
+            key: None,
+            fut0: None,
+            fut1: None,
+        }
+    }
+
+    pub fn get_iter(&self) -> &GetObjectIter {
+        &self.iter
+    }
+
+    async fn get_object(
+        client: S3Client,
+        request: GetObjectRequest,
+    ) -> RusotoResult<GetObjectOutput, GetObjectError> {
+        client.get_object(request).await
+    }
+
+    unsafe_unpinned!(iter: GetObjectIter);
+    unsafe_unpinned!(next: Option<Object>);
+    unsafe_unpinned!(key: Option<String>);
+    unsafe_pinned!(fut0: Option<NextObjFuture>);
+    unsafe_pinned!(fut1: Option<NextGetObjFuture>);
+}
+
+impl Stream for GetObjectStream {
+    type Item = S3ExtResult<(String, GetObjectOutput)>;
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+        if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_none() {
+            if let Some(object) = self.as_mut().iter().inner.objects.next() {
+                self.as_mut().next().set(Some(object));
+            } else {
+                let client = self.as_mut().iter().inner.client.clone();
+                let request = self.as_mut().iter().inner.request.clone();
+                self.as_mut()
+                    .fut0()
+                    .set(Some(Box::pin(ObjectStream::get_objects(client, request))));
+            }
+        }
+
+        assert!(!(self.as_mut().fut0().is_some() && self.as_mut().fut1().is_some()));
+
+        if self.as_mut().fut0().is_some() {
+            let result = ready!(self.as_mut().fut0().as_pin_mut().unwrap().poll(cx));
+            self.as_mut().fut0().set(None);
+
+            match result {
+                Ok(resp) => self.as_mut().iter().update_objects(resp),
+                Err(e) => return Poll::Ready(Some(Err(e))),
+            }
+            let next = self.as_mut().iter().objects.next()
+            self.as_mut().next().set(next);
+        }
+
+        if let Some(next) = self.as_mut().next().take() {
+            let key = if let Some(key) = next.key {
+                key
+            } else {
+                return Poll::Ready(Some(Err(S3ExtError::Other("response is missing key"))));
+            };
+            self.as_mut().key().set(Some(key.clone()));
+            let client = self.as_mut().iter().inner.client.clone();
+            let request = GetObjectRequest {
+                bucket: self.as_mut().iter().bucket.clone(),
+                key,
+                ..Default::default()
+            };
+            self.as_mut()
+                .fut1()
+                .set(Some(Box::pin(Self::get_object(client, request))));
+        }
+
+        if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_some() {
+            let result = ready!(self.as_mut().fut1().as_pin_mut().unwrap().poll(cx));
+            self.as_mut.fut1().set(None);
+            match result {
+                Ok(obj) => Poll::Ready(Some(Ok((self.as_mut().key().clone(), obj)))),
+                Err(e) => Poll::Ready(Some(Err(e))),
+            }
+        }
+    }
 }
