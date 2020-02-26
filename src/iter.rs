@@ -231,6 +231,18 @@ impl ObjectIter {
     }
 }
 
+use futures::stream::Stream;
+use std::future::Future;
+use std::pin::Pin;
+use futures::task::{Context, Poll};
+
+impl Stream for ObjectIter {
+    type Item = RusotoResult<Object, ListObjectsV2Error>;
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
+
+    }
+}
+
 /// Iterator retrieving all objects or objects with a given prefix
 ///
 /// The iterator yields tuples of `(key, object)`.
