@@ -174,23 +174,27 @@ impl ObjectIter {
         Ok(objects.last())
     }
 
-    pub async fn next_object(&mut self) -> RusotoResult<Option<Object>, ListObjectsV2Error> {
-        if let object @ Some(_) = self.objects.next() {
-            Ok(object)
-        } else if self.exhausted {
-            Ok(None)
+    pub async fn next_object(&mut self) -> Option<RusotoResult<Object, ListObjectsV2Error>> {
+        if let Some(object) = self.objects.next() {
+            Some(Ok(object))
         } else {
-            self.next_objects().await?;
-            Ok(self.objects.next())
+            if let Err(e) = self.next_objects().await {
+                return Some(Err(e.into()));
+            }
+            if let Some(object) = self.objects.next() {
+                Some(Ok(object))
+            } else {
+                None
+            }
         }
     }
 
     pub fn into_stream(self) -> impl Stream<Item = RusotoResult<Object, ListObjectsV2Error>> {
         unfold(self, |mut state| async move {
-            match state.next_object().await {
-                Ok(Some(obj)) => Some((Ok(obj), state)),
-                Err(e) => Some((Err(e), state)),
-                Ok(None) => None,
+            if let Some(x) = state.next_object().await {
+                Some((x, state))
+            } else {
+                None
             }
         })
     }
@@ -231,15 +235,14 @@ impl ObjectIter {
     }
 }
 
-use futures::stream::Stream;
-use std::future::Future;
 use std::pin::Pin;
+use futures::ready;
 use futures::task::{Context, Poll};
 
 impl Stream for ObjectIter {
     type Item = RusotoResult<Object, ListObjectsV2Error>;
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-
+        self.next_object().deref_mut()
     }
 }
 
