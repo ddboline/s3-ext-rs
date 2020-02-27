@@ -1,6 +1,6 @@
 [package]
 name = "s3-ext"
-description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
+description = "Simple Storage Service Extensions for Rust"
 version = "0.1.2"
 documentation = "https://docs.rs/s3-ext"
 repository = "https://gitlab.com/ddboline/s3-ext"
