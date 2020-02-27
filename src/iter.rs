@@ -250,6 +250,8 @@ impl Stream for ObjectStream {
         if self.as_mut().fut().is_none() {
             if let Some(object) = self.as_mut().iter().objects.next() {
                 return Poll::Ready(Some(Ok(object)));
+            } else if self.as_mut().iter().exhausted {
+                return Poll::Ready(None);
             } else {
                 let client = self.as_mut().iter().client.clone();
                 let request = self.as_mut().iter().request.clone();
@@ -414,6 +416,8 @@ impl Stream for GetObjectStream {
         if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_none() {
             if let Some(object) = self.as_mut().iter().inner.objects.next() {
                 self.as_mut().next().replace(object);
+            } else if self.as_mut().iter().inner.exhausted {
+                return Poll::Ready(None);
             } else {
                 let client = self.as_mut().iter().inner.client.clone();
                 let request = self.as_mut().iter().inner.request.clone();
