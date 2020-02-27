@@ -23,7 +23,7 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 
 pub mod iter;
-use crate::iter::{GetObjectIter, ObjectStream};
+use crate::iter::{GetObjectStream, ObjectStream};
 pub mod error;
 use crate::error::{S3ExtError, S3ExtResult};
 mod upload;
@@ -151,17 +151,17 @@ pub trait S3Ext {
     fn stream_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectStream;
 
     /// Iterator over all objects; fetching objects as needed
-    /// Note: GetObjectIter isn't an iterator, instead, it has several useful methods (all async),
+    /// Note: GetObjectStream isn't an iterator, instead, it has several useful methods (all async),
     /// which match methods found on an actual iterator, and you can construct a stream from it
     /// via the `into_stream` method.
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter;
+    fn stream_get_objects(&self, bucket: &str) -> GetObjectStream;
 
     /// Iterator over objects with given `prefix`; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter;
+    fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectStream;
 }
 
 #[async_trait]
@@ -265,13 +265,13 @@ impl S3Ext for S3Client {
     }
 
     #[inline]
-    fn iter_get_objects(&self, bucket: &str) -> GetObjectIter {
-        GetObjectIter::new(self, bucket, None)
+    fn stream_get_objects(&self, bucket: &str) -> GetObjectStream {
+        GetObjectStream::new(self, bucket, None)
     }
 
     #[inline]
-    fn iter_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectIter {
-        GetObjectIter::new(self, bucket, Some(prefix))
+    fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectStream {
+        GetObjectStream::new(self, bucket, Some(prefix))
     }
 }
 
