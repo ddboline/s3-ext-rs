@@ -225,6 +225,10 @@ impl ObjectStream {
         }
     }
 
+    pub fn get_iter(&self) -> &ObjectIter {
+        &self.iter
+    }
+
     pub fn into_iter(self) -> ObjectIter {
         self.iter
     }
@@ -374,8 +378,20 @@ impl GetObjectStream {
         }
     }
 
+    pub fn get_iter(&self) -> &GetObjectIter {
+        &self.iter
+    }
+
     pub fn into_iter(self) -> GetObjectIter {
         self.iter
+    }
+
+    pub fn get_inner(&self) -> &ObjectIter {
+        &self.iter.inner
+    }
+
+    pub fn into_inner(self) -> ObjectIter {
+        self.iter.inner
     }
 
     async fn get_object(
