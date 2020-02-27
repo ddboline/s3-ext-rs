@@ -1,11 +1,11 @@
 mod common;
 use crate::common::*;
 
+use futures::stream::StreamExt;
 use rusoto_s3::GetObjectOutput;
 use s3_ext::error::S3ExtResult;
 use s3_ext::S3Ext;
 use tokio::io::AsyncReadExt;
-use futures::stream::StreamExt;
 
 #[tokio::test]
 async fn stream_objects() {
@@ -79,13 +79,29 @@ async fn stream_objects_nth() {
 async fn stream_objects_count() {
     let (client, bucket) = create_test_bucket().await;
 
-    assert_eq!(client.stream_objects(&bucket).into_iter().count().await.unwrap(), 0);
+    assert_eq!(
+        client
+            .stream_objects(&bucket)
+            .into_iter()
+            .count()
+            .await
+            .unwrap(),
+        0
+    );
 
     for i in (0..2122).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
     }
 
-    assert_eq!(client.stream_objects(&bucket).into_iter().count().await.unwrap(), 2122);
+    assert_eq!(
+        client
+            .stream_objects(&bucket)
+            .into_iter()
+            .count()
+            .await
+            .unwrap(),
+        2122
+    );
 
     let mut iter = client.stream_objects(&bucket).into_iter();
     iter.nth(1199).await.unwrap().unwrap();
@@ -109,7 +125,8 @@ async fn stream_objects_last() {
     let (client, bucket) = create_test_bucket().await;
 
     assert!(client
-        .stream_objects(&bucket).into_iter()
+        .stream_objects(&bucket)
+        .into_iter()
         .last()
         .await
         .unwrap()
@@ -121,7 +138,8 @@ async fn stream_objects_last() {
 
     assert_eq!(
         client
-            .stream_objects(&bucket).into_iter()
+            .stream_objects(&bucket)
+            .into_iter()
             .last()
             .await
             .unwrap()
@@ -133,7 +151,8 @@ async fn stream_objects_last() {
     put_object(&client, &bucket, "1000", vec![]).await;
     assert_eq!(
         client
-            .stream_objects(&bucket).into_iter()
+            .stream_objects(&bucket)
+            .into_iter()
             .last()
             .await
             .unwrap()
@@ -145,7 +164,8 @@ async fn stream_objects_last() {
     put_object(&client, &bucket, "1001", vec![]).await;
     assert_eq!(
         client
-            .stream_objects(&bucket).into_iter()
+            .stream_objects(&bucket)
+            .into_iter()
             .last()
             .await
             .unwrap()
@@ -163,6 +183,16 @@ async fn stream_get_objects() {
     for i in (1..1004).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
     }
+
+    assert_eq!(
+        client
+            .stream_get_objects(&bucket)
+            .into_iter()
+            .count()
+            .await
+            .unwrap(),
+        1003
+    );
 
     let mut iter = client.stream_get_objects(&bucket);
     for i in (1..1004).map(|i| format!("{:04}", i)) {
@@ -206,7 +236,8 @@ async fn stream_get_objects_with_prefix_count() {
     put_object(&client, &bucket, "c/0030", vec![]).await;
     assert_eq!(
         client
-            .stream_get_objects_with_prefix(&bucket, "b/").into_iter()
+            .stream_get_objects_with_prefix(&bucket, "b/")
+            .into_iter()
             .count()
             .await
             .unwrap(),
@@ -219,7 +250,8 @@ async fn stream_get_objects_with_prefix_count() {
 
     assert_eq!(
         client
-            .stream_get_objects_with_prefix(&bucket, "b/").into_iter()
+            .stream_get_objects_with_prefix(&bucket, "b/")
+            .into_iter()
             .count()
             .await
             .unwrap(),
@@ -232,7 +264,8 @@ async fn stream_get_objects_last() {
     let (client, bucket) = create_test_bucket().await;
 
     assert!(client
-        .stream_get_objects(&bucket).into_iter()
+        .stream_get_objects(&bucket)
+        .into_iter()
         .last()
         .await
         .unwrap()
@@ -242,7 +275,11 @@ async fn stream_get_objects_last() {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
     }
 
-    assert_key_and_body(client.stream_get_objects(&bucket).into_iter().last().await, "1001").await;
+    assert_key_and_body(
+        client.stream_get_objects(&bucket).into_iter().last().await,
+        "1001",
+    )
+    .await;
 }
 
 async fn assert_key_and_body(
