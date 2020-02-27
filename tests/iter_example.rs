@@ -48,7 +48,7 @@ async fn test_iter_example() -> Result<(), S3ExtError> {
 
     // iterate over objects objects (sorted alphabetically)
     let objects: Vec<_> = client
-        .iter_objects(&bucket)
+        .stream_objects(&bucket)
         .into_stream()
         .map(|res| res.map(|obj| obj.key))
         .try_collect()
@@ -68,7 +68,7 @@ async fn test_iter_example() -> Result<(), S3ExtError> {
 
     // iterate object and fetch content on the fly (sorted alphabetically)
     let results: Result<Vec<_>, _> = client
-        .iter_get_objects(&bucket)
+        .stream_get_objects(&bucket)
         .into_stream()
         .map(|res| res.map(|(key, obj)| (key, obj.body)))
         .try_collect()

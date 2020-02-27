@@ -55,7 +55,7 @@
 //!     // iterate over objects objects (sorted alphabetically)
 //!
 //!    let objects: Vec<_> = client
-//!         .iter_objects(&bucket)
+//!         .stream_objects(&bucket)
 //!         .into_stream()
 //!         .map(|res| res.map(|obj| obj.key))
 //!         .try_collect()
@@ -75,7 +75,7 @@
 //!
 //!     // iterate object and fetch content on the fly (sorted alphabetically)
 //!     let results: Result<Vec<_>, _> = client
-//!         .iter_get_objects(&bucket)
+//!         .stream_get_objects(&bucket)
 //!         .into_stream()
 //!         .map(|res| res.map(|(key, obj)| (key, obj.body)))
 //!         .try_collect()
@@ -225,8 +225,8 @@ impl ObjectStream {
         }
     }
 
-    pub fn get_iter(&self) -> &ObjectIter {
-        &self.iter
+    pub fn into_iter(self) -> ObjectIter {
+        self.iter
     }
 
     async fn get_objects(
@@ -374,8 +374,8 @@ impl GetObjectStream {
         }
     }
 
-    pub fn get_iter(&self) -> &GetObjectIter {
-        &self.iter
+    pub fn into_iter(self) -> GetObjectIter {
+        self.iter
     }
 
     async fn get_object(
@@ -450,6 +450,8 @@ impl Stream for GetObjectStream {
                 Ok(obj) => Poll::Ready(Some(Ok((self.as_mut().key().take().unwrap(), obj)))),
                 Err(e) => Poll::Ready(Some(Err(e.into()))),
             }
-        } else {Poll::Ready(None)}
+        } else {
+            panic!("We shouldn't ever get here...");
+        }
     }
 }
