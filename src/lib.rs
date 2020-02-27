@@ -143,20 +143,17 @@ pub trait S3Ext {
     /// Objects are lexicographically sorted by their key.
     fn stream_objects(&self, bucket: &str) -> ObjectStream;
 
-    /// Iterator over objects with given `prefix`
+    /// Stream over objects with given `prefix`
     ///
     /// Objects are lexicographically sorted by their key.
     fn stream_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectStream;
 
-    /// Iterator over all objects; fetching objects as needed
-    /// Note: GetObjectStream isn't an iterator, instead, it has several useful methods (all async),
-    /// which match methods found on an actual iterator, and you can construct a stream from it
-    /// via the `into_stream` method.
+    /// Stream over all objects; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
     fn stream_get_objects(&self, bucket: &str) -> GetObjectStream;
 
-    /// Iterator over objects with given `prefix`; fetching objects as needed
+    /// Stream over objects with given `prefix`; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
     fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectStream;
