@@ -459,7 +459,9 @@ impl Stream for GetObjectStream {
                 .set(Some(Box::pin(Self::get_object(client, request))));
         }
 
-        if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_some() {
+        assert!(self.as_mut().fut0().is_none());
+
+        if self.as_mut().fut1().is_some() {
             let result = ready!(self.as_mut().fut1().as_pin_mut().unwrap().poll(cx));
             self.as_mut().fut1().set(None);
             match result {
