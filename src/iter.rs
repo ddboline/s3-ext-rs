@@ -352,7 +352,7 @@ impl GetObjectIter {
     }
 }
 
-type GetObjResult = S3ExtResult<GetObjectOutput>;
+type GetObjResult = RusotoResult<GetObjectOutput, GetObjectError>;
 type NextGetObjFuture = Pin<Box<dyn Future<Output = GetObjResult>>>;
 
 pub struct GetObjectStream {
@@ -397,7 +397,7 @@ impl Stream for GetObjectStream {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
         if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_none() {
             if let Some(object) = self.as_mut().iter().inner.objects.next() {
-                self.as_mut().next().set(Some(object));
+                self.as_mut().next().replace(object);
             } else {
                 let client = self.as_mut().iter().inner.client.clone();
                 let request = self.as_mut().iter().inner.request.clone();
@@ -414,11 +414,15 @@ impl Stream for GetObjectStream {
             self.as_mut().fut0().set(None);
 
             match result {
-                Ok(resp) => self.as_mut().iter().update_objects(resp),
-                Err(e) => return Poll::Ready(Some(Err(e))),
+                Ok(resp) => self.as_mut().iter().inner.update_objects(resp),
+                Err(e) => return Poll::Ready(Some(Err(e.into()))),
             }
-            let next = self.as_mut().iter().objects.next()
-            self.as_mut().next().set(next);
+            match self.as_mut().iter().inner.objects.next() {
+                Some(next) => {
+                    self.as_mut().next().replace(next);
+                }
+                None => return Poll::Ready(None),
+            }
         }
 
         if let Some(next) = self.as_mut().next().take() {
@@ -427,7 +431,7 @@ impl Stream for GetObjectStream {
             } else {
                 return Poll::Ready(Some(Err(S3ExtError::Other("response is missing key"))));
             };
-            self.as_mut().key().set(Some(key.clone()));
+            self.as_mut().key().replace(key.clone());
             let client = self.as_mut().iter().inner.client.clone();
             let request = GetObjectRequest {
                 bucket: self.as_mut().iter().bucket.clone(),
@@ -441,11 +445,11 @@ impl Stream for GetObjectStream {
 
         if self.as_mut().fut0().is_none() && self.as_mut().fut1().is_some() {
             let result = ready!(self.as_mut().fut1().as_pin_mut().unwrap().poll(cx));
-            self.as_mut.fut1().set(None);
+            self.as_mut().fut1().set(None);
             match result {
-                Ok(obj) => Poll::Ready(Some(Ok((self.as_mut().key().clone(), obj)))),
-                Err(e) => Poll::Ready(Some(Err(e))),
+                Ok(obj) => Poll::Ready(Some(Ok((self.as_mut().key().take().unwrap(), obj)))),
+                Err(e) => Poll::Ready(Some(Err(e.into()))),
             }
-        }
+        } else {Poll::Ready(None)}
     }
 }
