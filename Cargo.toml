@@ -1,7 +1,7 @@
 [package]
 name = "s3-ext"
 description = "Simpler Simple Storage Service: high-level API extensions for Rusoto's S3Client"
-version = "0.1.1"
+version = "0.1.2"
 documentation = "https://docs.rs/s3-ext"
 repository = "https://gitlab.com/ddboline/s3-ext"
 authors = ["Daniel Boline <ddboline@gmail.com>", "Peter Gerber <peter@arbitrary.ch>"]
@@ -24,6 +24,7 @@ tokio = {version="0.2", features=["fs", "io-util", "stream"]}
 async-trait = "0.1"
 parking_lot = "0.10"
 lazy_static = "1.4"
+pin-utils = "0.1.0-alpha.4"
 
 [dev-dependencies]
 tempdir = "0.3"
