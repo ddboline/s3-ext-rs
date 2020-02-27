@@ -137,10 +137,8 @@ pub trait S3Ext {
     where
         R: io::AsyncRead + Unpin + Send;
 
-    /// Iterator over all objects
-    /// Note: ObjectIter doesn't implement Iterator, instead, it has several useful methods (all async),
-    /// which match methods found on an actual iterator, and you can construct a stream from it
-    /// via the `into_stream` method.
+    /// Stream over all objects
+    /// Access to an iterator-like object `ObjectIter` can be obtained by calling into_iter()
     ///
     /// Objects are lexicographically sorted by their key.
     fn stream_objects(&self, bucket: &str) -> ObjectStream;
