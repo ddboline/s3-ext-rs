@@ -109,7 +109,7 @@
 
 use crate::error::{S3ExtError, S3ExtResult};
 use futures::ready;
-use futures::stream::{unfold, Stream};
+use futures::stream::Stream;
 use futures::task::{Context, Poll};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use rusoto_core::{RusotoError, RusotoResult};
@@ -122,7 +122,7 @@ use std::mem;
 use std::pin::Pin;
 use std::vec::IntoIter;
 
-/// Iterator over all objects or objects with a given prefix
+/// Iterator-like objects, forms the basis of ObjectStream
 #[derive(Clone)]
 pub struct ObjectIter {
     client: S3Client,
@@ -173,6 +173,7 @@ impl ObjectIter {
         Ok(objects.last())
     }
 
+    /// Get the next object (or None if there are no more objects), may return an error when fetching objects.
     pub async fn next_object(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         if let object @ Some(_) = self.objects.next() {
             Ok(object)
@@ -184,6 +185,7 @@ impl ObjectIter {
         }
     }
 
+    /// Consume the iterator and return the number of objects
     pub async fn count(mut self) -> Result<usize, RusotoError<ListObjectsV2Error>> {
         let mut count = self.objects.len();
         while !self.exhausted {
@@ -193,10 +195,12 @@ impl ObjectIter {
         Ok(count)
     }
 
+    /// Consume the iterator and return the last object
     pub async fn last(mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         self.last_internal().await
     }
 
+    /// Consume the iterator and return the nth object
     pub async fn nth(
         &mut self,
         mut n: usize,
@@ -212,6 +216,7 @@ impl ObjectIter {
 type ObjResult = RusotoResult<ListObjectsV2Output, ListObjectsV2Error>;
 type NextObjFuture = Pin<Box<dyn Future<Output = ObjResult>>>;
 
+/// Stream over objects
 pub struct ObjectStream {
     iter: ObjectIter,
     fut: Option<NextObjFuture>,
@@ -225,10 +230,12 @@ impl ObjectStream {
         }
     }
 
+    /// Return a reference to ObjectIter
     pub fn get_iter(&self) -> &ObjectIter {
         &self.iter
     }
 
+    /// Consume the string and return the ObjectIter
     pub fn into_iter(self) -> ObjectIter {
         self.iter
     }
@@ -244,6 +251,7 @@ impl ObjectStream {
     unsafe_pinned!(fut: Option<NextObjFuture>);
 }
 
+// This is kind of ugly but seems to work as intended, I hope that one day this can be done more simply...
 impl Stream for ObjectStream {
     type Item = RusotoResult<Object, ListObjectsV2Error>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
@@ -276,7 +284,7 @@ impl Stream for ObjectStream {
     }
 }
 
-/// Iterator retrieving all objects or objects with a given prefix
+/// Iterator-like object retrieving all objects or objects with a given prefix
 ///
 /// The iterator yields tuples of `(key, object)`.
 #[derive(Clone)]
@@ -286,7 +294,7 @@ pub struct GetObjectIter {
 }
 
 impl GetObjectIter {
-    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
         GetObjectIter {
             inner: ObjectIter::new(client, bucket, prefix),
             bucket: bucket.to_owned(),
@@ -319,19 +327,10 @@ impl GetObjectIter {
         }
     }
 
+    /// Retrieve the next object
     pub async fn retrieve_next(&mut self) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
         let next = self.inner.next_object().await?;
         self.retrieve(next).await
-    }
-
-    pub fn into_stream(self) -> impl Stream<Item = S3ExtResult<(String, GetObjectOutput)>> {
-        unfold(self, |mut state| async move {
-            match state.retrieve_next().await {
-                Ok(Some(obj)) => Some((Ok(obj), state)),
-                Err(e) => Some((Err(e), state)),
-                Ok(None) => None,
-            }
-        })
     }
 
     #[inline]
@@ -341,17 +340,20 @@ impl GetObjectIter {
     }
 
     #[inline]
+    /// Consume the iterator and return the number of elements
     pub async fn count(self) -> Result<usize, S3ExtError> {
         self.inner.count().await.map_err(|e| e.into())
     }
 
     #[inline]
+    /// Consume the iterator and retreive the last element
     pub async fn last(mut self) -> Result<Option<(String, GetObjectOutput)>, S3ExtError> {
         let last = self.inner.last_internal().await?;
         self.retrieve(last).await
     }
 
     #[inline]
+    /// Consume the iterator and return the nth element
     pub async fn nth(&mut self, n: usize) -> Result<Option<(String, GetObjectOutput)>, S3ExtError> {
         let nth = self.inner.nth(n).await?;
         self.retrieve(nth).await
@@ -361,6 +363,7 @@ impl GetObjectIter {
 type GetObjResult = RusotoResult<GetObjectOutput, GetObjectError>;
 type NextGetObjFuture = Pin<Box<dyn Future<Output = GetObjResult>>>;
 
+/// Stream which retrieves objects
 pub struct GetObjectStream {
     iter: GetObjectIter,
     next: Option<Object>,
@@ -380,18 +383,22 @@ impl GetObjectStream {
         }
     }
 
+    /// Return a reference to our GetObjectIter object
     pub fn get_iter(&self) -> &GetObjectIter {
         &self.iter
     }
 
+    /// Return our GetObjectIter object
     pub fn into_iter(self) -> GetObjectIter {
         self.iter
     }
 
+    /// Return a reference to our ObjectIter object
     pub fn get_inner(&self) -> &ObjectIter {
         &self.iter.inner
     }
 
+    /// Return our ObjectIter object
     pub fn into_inner(self) -> ObjectIter {
         self.iter.inner
     }
