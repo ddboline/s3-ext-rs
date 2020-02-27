@@ -17,15 +17,15 @@ S3-ext provides a high-level API for S3 building on top of [Rusoto](https://www.
 * download object and [`Write`] it
 * upload object from file
 * [`Read`] object and upload it
-* simple way to iterate through all objects or objects with a given prefix
+* simple way to create stream of all objects or objects with a given prefix
 
 ## Implementation details
 
 Most functionality is provided by the `S3Ext` trait which is implemented for *Rusoto*'s `S3Client`.
 
 
-[`Read`]: https://doc.rust-lang.org/nightly/std/io/trait.Read.html
-[`Write`]: https://doc.rust-lang.org/nightly/std/io/trait.Write.html
+[`AsyncRead`]: https://docs.rs/tokio/0.2.11/tokio/io/trait.AsyncReadExt.html
+[`AsyncWrite`]: https://docs.rs/tokio/0.2.11/tokio/io/trait.AsyncWriteExt.html
 
 
 ## Running Tests
