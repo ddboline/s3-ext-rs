@@ -56,7 +56,6 @@
 //!
 //!    let objects: Vec<_> = client
 //!         .stream_objects(&bucket)
-//!         .into_stream()
 //!         .map(|res| res.map(|obj| obj.key))
 //!         .try_collect()
 //!         .await?;
@@ -76,7 +75,6 @@
 //!     // iterate object and fetch content on the fly (sorted alphabetically)
 //!     let results: Result<Vec<_>, _> = client
 //!         .stream_get_objects(&bucket)
-//!         .into_stream()
 //!         .map(|res| res.map(|(key, obj)| (key, obj.body)))
 //!         .try_collect()
 //!         .await;
