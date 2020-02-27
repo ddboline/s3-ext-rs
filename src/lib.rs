@@ -21,6 +21,8 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::should_implement_trait)]
+#![allow(clippy::must_use_candidate)]
 
 pub mod iter;
 use crate::iter::{GetObjectStream, ObjectStream};

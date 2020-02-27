@@ -173,7 +173,7 @@ impl ObjectIter {
         Ok(objects.last())
     }
 
-    pub async fn next(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
+    pub async fn next_object(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         if let object @ Some(_) = self.objects.next() {
             Ok(object)
         } else if self.exhausted {
@@ -320,7 +320,7 @@ impl GetObjectIter {
     }
 
     pub async fn retrieve_next(&mut self) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
-        let next = self.inner.next().await?;
+        let next = self.inner.next_object().await?;
         self.retrieve(next).await
     }
 
@@ -336,7 +336,7 @@ impl GetObjectIter {
 
     #[inline]
     pub async fn next(&mut self) -> S3ExtResult<Option<(String, GetObjectOutput)>> {
-        let next = self.inner.next().await?;
+        let next = self.inner.next_object().await?;
         self.retrieve(next).await
     }
 
