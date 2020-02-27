@@ -212,7 +212,7 @@ impl ObjectIter {
 }
 
 type ObjResult = RusotoResult<ListObjectsV2Output, ListObjectsV2Error>;
-type NextObjFuture = Pin<Box<dyn Future<Output = ObjResult>>>;
+type NextObjFuture = Pin<Box<dyn Future<Output = ObjResult> + Send>>;
 
 /// Stream over objects
 pub struct ObjectStream {
@@ -359,7 +359,7 @@ impl GetObjectIter {
 }
 
 type GetObjResult = RusotoResult<GetObjectOutput, GetObjectError>;
-type NextGetObjFuture = Pin<Box<dyn Future<Output = GetObjResult>>>;
+type NextGetObjFuture = Pin<Box<dyn Future<Output = GetObjResult> + Send>>;
 
 /// Stream which retrieves objects
 pub struct GetObjectStream {
