@@ -1,18 +1,18 @@
 mod common;
 use crate::common::ReaderWithError;
 
-use rand::{thread_rng, RngCore};
-use rand::{Rng, SeedableRng};
+use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rusoto_core::RusotoError;
 use rusoto_s3::{
     GetObjectError, GetObjectRequest, ListMultipartUploadsRequest, PutObjectRequest, S3,
 };
-use s3_ext::error::S3ExtError;
-use s3_ext::S3Ext;
+use s3_ext::{error::S3ExtError, S3Ext};
 use tempdir::TempDir;
-use tokio::fs::File;
-use tokio::io::{self, AsyncReadExt, ErrorKind};
+use tokio::{
+    fs::File,
+    io::{self, AsyncReadExt, ErrorKind},
+};
 
 const NUMBER_OF_TESTS: usize = 10;
 
@@ -316,9 +316,7 @@ async fn test_multipart_upload_is_aborted() {
         let (client, bucket) = common::create_test_bucket().await;
         let abort_after = rand::thread_rng().gen_range(0, 10 * 1024 * 1024); // between 0 and 10 MiB
         println!("abort location: {}", abort_after);
-        let mut reader = ReaderWithError {
-            abort_after: abort_after,
-        };
+        let mut reader = ReaderWithError { abort_after };
 
         let put_request = PutObjectRequest {
             bucket: bucket.clone(),

@@ -32,17 +32,20 @@ mod upload;
 
 use async_trait::async_trait;
 use log::debug;
-use rusoto_core::request::{HttpClient, TlsError};
-use rusoto_core::Region;
+use rusoto_core::{
+    request::{HttpClient, TlsError},
+    Region,
+};
 use rusoto_credential::StaticProvider;
 use rusoto_s3::{
     CompleteMultipartUploadOutput, GetObjectOutput, GetObjectRequest, PutObjectOutput,
     PutObjectRequest, S3Client, StreamingBody, S3,
 };
-use std::convert::AsRef;
-use std::path::Path;
-use tokio::fs::{File, OpenOptions};
-use tokio::io;
+use std::{convert::AsRef, path::Path};
+use tokio::{
+    fs::{File, OpenOptions},
+    io,
+};
 
 /// Create client using given static access/secret keys
 pub fn new_s3client_with_credentials(

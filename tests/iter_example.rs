@@ -1,10 +1,11 @@
-use futures::future::try_join_all;
-use futures::stream::{StreamExt, TryStreamExt};
+use futures::{
+    future::try_join_all,
+    stream::{StreamExt, TryStreamExt},
+};
 use rand::RngCore;
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
-use s3_ext::error::S3ExtError;
-use s3_ext::S3Ext;
+use s3_ext::{error::S3ExtError, S3Ext};
 use std::env;
 use tokio::io::AsyncReadExt;
 

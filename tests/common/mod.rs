@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
-use core::pin::Pin;
-use core::task::Context;
-use core::task::Poll;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use core::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+use rand::{distributions::Alphanumeric, Rng};
 use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3Client, S3};
 use s3_ext::new_s3client_with_credentials;

@@ -106,19 +106,18 @@
 //! ```
 
 use crate::error::{S3ExtError, S3ExtResult};
-use futures::ready;
-use futures::stream::Stream;
-use futures::task::{Context, Poll};
+use futures::{
+    ready,
+    stream::Stream,
+    task::{Context, Poll},
+};
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use rusoto_core::{RusotoError, RusotoResult};
 use rusoto_s3::{
     GetObjectError, GetObjectOutput, GetObjectRequest, ListObjectsV2Error, ListObjectsV2Output,
     ListObjectsV2Request, Object, S3Client, S3,
 };
-use std::future::Future;
-use std::mem;
-use std::pin::Pin;
-use std::vec::IntoIter;
+use std::{future::Future, mem, pin::Pin, vec::IntoIter};
 
 /// Iterator-like objects, forms the basis of ObjectStream
 #[derive(Clone)]

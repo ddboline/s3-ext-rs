@@ -3,8 +3,7 @@ use crate::common::*;
 
 use futures::stream::StreamExt;
 use rusoto_s3::GetObjectOutput;
-use s3_ext::error::S3ExtResult;
-use s3_ext::S3Ext;
+use s3_ext::{error::S3ExtResult, S3Ext};
 use tokio::io::AsyncReadExt;
 
 #[tokio::test]
