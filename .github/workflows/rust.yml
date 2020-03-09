@@ -7,6 +7,14 @@ on:
     branches: [ master ]
 
 jobs:
+  services:
+    image: docker://minio/minio:latest
+    ports: 9000:9000
+    env:
+      - MINIO_ACCESS_KEY: ANTN35UAENTS5UIAEATD
+      - MINIO_SECRET_KEY: TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur
+      - MINIO_DOMAIN: localhost
+
   build:
 
     runs-on: ubuntu-latest
@@ -19,11 +27,6 @@ jobs:
       run: cargo clippy -- -W clippy::pedantic
     - name: Build
       run: cargo build --verbose
-    - name: Start minio
-      run: |
-            docker run --help && docker run -d --rm -p 9000:9000 --env "MINIO_ACCESS_KEY=ANTN35UAENTS5UIAEATD" \
-            --env "MINIO_SECRET_KEY=TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur" \
-            --env MINIO_DOMAIN=localhost minio/minio server /minio
     - name: Run tests
       run: cargo test --verbose
     - name: spin down minio
