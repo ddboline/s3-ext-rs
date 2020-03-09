@@ -8,7 +8,7 @@ use thiserror::Error;
 
 pub type S3ExtResult<T> = Result<T, S3ExtError>;
 
-/// Errors returned by S3Ext
+/// Errors returned by `S3Ext`
 #[derive(Debug, Error)]
 pub enum S3ExtError {
     /// Unknown error

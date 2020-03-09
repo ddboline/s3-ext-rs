@@ -119,7 +119,7 @@ use rusoto_s3::{
 };
 use std::{future::Future, mem, pin::Pin, vec::IntoIter};
 
-/// Iterator-like objects, forms the basis of ObjectStream
+/// Iterator-like objects, forms the basis of `ObjectStream`
 #[derive(Clone)]
 pub struct ObjectIter {
     client: S3Client,
@@ -227,12 +227,12 @@ impl ObjectStream {
         }
     }
 
-    /// Return a reference to ObjectIter
+    /// Return a reference to `ObjectIter`
     pub fn get_iter(&self) -> &ObjectIter {
         &self.iter
     }
 
-    /// Consume the string and return the ObjectIter
+    /// Consume the string and return the `ObjectIter`
     pub fn into_iter(self) -> ObjectIter {
         self.iter
     }
@@ -380,22 +380,22 @@ impl GetObjectStream {
         }
     }
 
-    /// Return a reference to our GetObjectIter object
+    /// Return a reference to our `GetObjectIter` object
     pub fn get_iter(&self) -> &GetObjectIter {
         &self.iter
     }
 
-    /// Return our GetObjectIter object
+    /// Return our `GetObjectIter` object
     pub fn into_iter(self) -> GetObjectIter {
         self.iter
     }
 
-    /// Return a reference to our ObjectIter object
+    /// Return a reference to our `ObjectIter` object
     pub fn get_inner(&self) -> &ObjectIter {
         &self.iter.inner
     }
 
-    /// Return our ObjectIter object
+    /// Return our `ObjectIter` object
     pub fn into_inner(self) -> ObjectIter {
         self.iter.inner
     }
