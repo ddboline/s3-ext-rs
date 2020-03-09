@@ -1,6 +1,8 @@
 # S3-Ext - Simple Storage Service Extensions for Rust
 
 [![crates.io](https://meritbadge.herokuapp.com/s3-ext)](https://crates.io/crates/s3-ext)
+[![Build Status](https://github.com/ddboline/s3-ext-rs/workflows/Rust/badge.svg?branch=master)](https://github.com/ddboline/s3-ext-rs/actions?branch=master)
+[![Documentation](https://docs.rs/s3-ext/badge.svg)](https://docs.rs/s3-ext/0.1.3/s3_ext/)
 
 ## What is S3-Ext
 
