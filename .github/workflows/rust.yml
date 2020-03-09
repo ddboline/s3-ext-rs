@@ -25,3 +25,5 @@ jobs:
             --env MINIO_DOMAIN=localhost minio/minio server /minio
     - name: Run tests
       run: cargo test --verbose
+    - name: spin down minio
+      run: docker rm `docker ps -a | awk '/minio/ {print $1}'`
