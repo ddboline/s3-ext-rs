@@ -1,4 +1,5 @@
-//! Simpler Simple Storage Service: high-level API extensions for Rusoto's `S3Client`
+//! Simpler Simple Storage Service: high-level API extensions for Rusoto's
+//! `S3Client`
 //!
 //! # TLS Support
 //!
@@ -77,7 +78,8 @@ pub trait S3Ext {
     ///
     /// # Caveats
     ///
-    /// The current implementation is incomplete. For now, the following limitation applies:
+    /// The current implementation is incomplete. For now, the following
+    /// limitation applies:
     ///
     /// * The full content of `source` is copied into memory.
     async fn upload_from_file<F>(
@@ -92,7 +94,8 @@ pub trait S3Ext {
     ///
     /// # Caveats
     ///
-    /// The current implementation is incomplete. For now, the following limitation applies:
+    /// The current implementation is incomplete. For now, the following
+    /// limitation applies:
     ///
     /// * The full content of a part is copied into memory.
     async fn upload_from_file_multipart<F>(
@@ -117,7 +120,8 @@ pub trait S3Ext {
     ///
     /// # Caveats
     ///
-    /// The current implementation is incomplete. For now, the following limitation applies:
+    /// The current implementation is incomplete. For now, the following
+    /// limitation applies:
     ///
     /// * The full content of `source` is copied into memory.
     async fn upload<R>(
@@ -132,7 +136,8 @@ pub trait S3Ext {
     ///
     /// # Caveats
     ///
-    /// The current implementation is incomplete. For now, the following limitation applies:
+    /// The current implementation is incomplete. For now, the following
+    /// limitation applies:
     ///
     /// * The full content of a part is copied into memory.
     async fn upload_multipart<R>(
@@ -145,7 +150,8 @@ pub trait S3Ext {
         R: io::AsyncRead + Unpin + Send;
 
     /// Stream over all objects
-    /// Access to an iterator-like object `ObjectIter` can be obtained by calling into_iter()
+    /// Access to an iterator-like object `ObjectIter` can be obtained by
+    /// calling into_iter()
     ///
     /// Objects are lexicographically sorted by their key.
     fn stream_objects(&self, bucket: &str) -> ObjectStream;

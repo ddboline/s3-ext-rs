@@ -170,7 +170,8 @@ impl ObjectIter {
         Ok(objects.last())
     }
 
-    /// Get the next object (or None if there are no more objects), may return an error when fetching objects.
+    /// Get the next object (or None if there are no more objects), may return
+    /// an error when fetching objects.
     pub async fn next_object(&mut self) -> Result<Option<Object>, RusotoError<ListObjectsV2Error>> {
         if let object @ Some(_) = self.objects.next() {
             Ok(object)
@@ -248,7 +249,8 @@ impl ObjectStream {
     unsafe_pinned!(fut: Option<NextObjFuture>);
 }
 
-// This is kind of ugly but seems to work as intended, I hope that one day this can be done more simply...
+// This is kind of ugly but seems to work as intended, I hope that one day this
+// can be done more simply...
 impl Stream for ObjectStream {
     type Item = RusotoResult<Object, ListObjectsV2Error>;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
