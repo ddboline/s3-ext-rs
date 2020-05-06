@@ -103,7 +103,7 @@ async fn test_download_to_file() {
     }
     let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
-        let mut data = Vec::new();
+        let mut data = vec![0u8; 4096];
         gen.fill_bytes(&mut data);
         assert!(download_to_file(data).await);
     }
@@ -136,7 +136,7 @@ async fn test_download() {
     }
     let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
-        let mut data = Vec::new();
+        let mut data = vec![0u8; 4096];
         gen.fill_bytes(&mut data);
         assert!(download(data).await);
     }
@@ -248,7 +248,7 @@ async fn test_upload_arbitrary() {
     }
     let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
-        let mut data = Vec::new();
+        let mut data = vec![0u8; 4096];
         gen.fill_bytes(&mut data);
         assert!(upload_arbitrary(data).await);
     }
@@ -294,7 +294,7 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
     common::init_logger();
     let (client, bucket) = common::create_test_bucket().await;
     let mut body = vec![0; obj_size as usize];
-    rng.fill_bytes(&mut body[..]);
+    rng.fill_bytes(&mut body);
 
     let put_request = PutObjectRequest {
         bucket: bucket.clone(),
