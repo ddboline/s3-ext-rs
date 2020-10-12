@@ -3,7 +3,7 @@
 [![crates.io](https://meritbadge.herokuapp.com/s3-ext)](https://crates.io/crates/s3-ext)
 [![Build Status](https://github.com/ddboline/s3-ext-rs/workflows/Rust/badge.svg?branch=master)](https://github.com/ddboline/s3-ext-rs/actions?branch=master)
 [![Documentation](https://docs.rs/s3-ext/badge.svg)](https://docs.rs/s3-ext/)
-[![codecov](https://codecov.io/gh/ddboline/s3_ext_rs/branch/master/graph/badge.svg)](https://codecov.io/gh/ddboline/s3_ext_rs)
+[![codecov](https://codecov.io/gh/ddboline/s3-ext-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/ddboline/s3-ext-rs)
 
 ## What is S3-Ext
 
