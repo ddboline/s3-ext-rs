@@ -64,7 +64,7 @@ where
 
     let upload_id = upload
         .upload_id
-        .ok_or_else(|| S3ExtError::Other("Missing upload ID"))?;
+        .ok_or(S3ExtError::Other("Missing upload ID"))?;
 
     debug!(
         "multi-part upload {:?} started (bucket: {}, key: {})",

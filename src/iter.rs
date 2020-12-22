@@ -275,11 +275,11 @@ impl Stream for ObjectStream {
             Ok(resp) => self.as_mut().iter().update_objects(resp),
             Err(e) => return Poll::Ready(Some(Err(e))),
         }
-        if let Some(object) = self.as_mut().iter().objects.next() {
-            Poll::Ready(Some(Ok(object)))
-        } else {
-            Poll::Ready(None)
-        }
+        self.as_mut()
+            .iter()
+            .objects
+            .next()
+            .map_or(Poll::Ready(None), |object| Poll::Ready(Some(Ok(object))))
     }
 }
 
@@ -308,7 +308,7 @@ impl GetObjectIter {
             Some(object) => {
                 let key = object
                     .key
-                    .ok_or_else(|| S3ExtError::Other("response is missing key"))?;
+                    .ok_or(S3ExtError::Other("response is missing key"))?;
                 let request = GetObjectRequest {
                     bucket: self.bucket.clone(),
                     key,
