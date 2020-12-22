@@ -261,7 +261,7 @@ async fn test_upload_multipart() {
         let seed = rand::thread_rng().gen();
         println!("rng seed: {:?}", seed);
         let mut rng = XorShiftRng::from_seed(seed);
-        let size = rng.gen_range(5 * 1024 * 1024, 15 * 1024 * 1024); // between 5 MiB and 15 MiB
+        let size = rng.gen_range(5 * 1024 * 1024..=15 * 1024 * 1024); // between 5 MiB and 15 MiB
         upload_multipart_helper(&mut rng, 5 * 1024 * 1024, size).await
     }
     for _ in 0..10 {
@@ -314,7 +314,7 @@ async fn test_multipart_upload_is_aborted() {
     async fn multipart_upload_is_aborted() -> bool {
         common::init_logger();
         let (client, bucket) = common::create_test_bucket().await;
-        let abort_after = rand::thread_rng().gen_range(0, 10 * 1024 * 1024); // between 0 and 10 MiB
+        let abort_after = rand::thread_rng().gen_range(0..=10 * 1024 * 1024); // between 0 and 10 MiB
         println!("abort location: {}", abort_after);
         let mut reader = ReaderWithError { abort_after };
 
