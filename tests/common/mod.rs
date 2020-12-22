@@ -25,7 +25,7 @@ pub async fn create_test_bucket() -> (S3Client, String) {
     let bucket: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(63)
-        .map(Into::into)
+        .map(|x| x as char)
         .collect();
     let bucket = bucket.to_lowercase();
 
