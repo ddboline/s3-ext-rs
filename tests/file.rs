@@ -332,6 +332,9 @@ async fn test_multipart_upload_is_aborted() {
                 format!("{}", e.into_inner().unwrap()),
                 "explicit, unconditional error"
             ),
+            S3ExtError::CompleteMultipartUploadError(e) => {
+                warn!("Unexpected error {:?}", e)
+            }
             e => panic!("unexpected error: {:?}", e),
         }
 
