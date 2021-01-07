@@ -59,6 +59,8 @@ where
             tagging: target.tagging.to_owned(),
             website_redirect_location: target.website_redirect_location.to_owned(),
             ssekms_encryption_context: target.ssekms_encryption_context.to_owned(),
+            bucket_key_enabled: target.bucket_key_enabled.to_owned(),
+            expected_bucket_owner: target.expected_bucket_owner.to_owned(),
         })
         .await?;
 
@@ -86,6 +88,7 @@ where
                     key: target.key.to_owned(),
                     request_payer: target.request_payer.to_owned(),
                     upload_id,
+                    expected_bucket_owner: target.expected_bucket_owner.to_owned(),
                 })
                 .await
             {
@@ -129,6 +132,7 @@ where
                 sse_customer_key: target.sse_customer_key.clone(),
                 sse_customer_key_md5: target.sse_customer_key_md5.clone(),
                 upload_id: upload_id.to_owned(),
+                expected_bucket_owner: target.expected_bucket_owner.clone(),
             })
             .await?;
 
@@ -145,6 +149,7 @@ where
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
             request_payer: target.request_payer.to_owned(),
             upload_id: upload_id.to_owned(),
+            expected_bucket_owner: target.expected_bucket_owner.to_owned(),
         })
         .await
         .map_err(|e| e.into())
