@@ -9,7 +9,7 @@ use rusoto_core::Region;
 use rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3Client, S3};
 use s3_ext::new_s3client_with_credentials;
 use std::env;
-use tokio::io::{self, AsyncRead, AsyncReadExt};
+use tokio::io::{self, AsyncRead, AsyncReadExt, ReadBuf};
 
 pub async fn create_test_bucket() -> (S3Client, String) {
     let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
@@ -86,18 +86,18 @@ impl AsyncRead for ReaderWithError {
     fn poll_read(
         mut self: Pin<&mut Self>,
         _: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<io::Result<usize>> {
-        if buf.len() > self.abort_after {
+        buf: &mut ReadBuf,
+    ) -> Poll<io::Result<()>> {
+        if buf.filled().len() > self.abort_after {
             return Poll::Ready(Err(io::Error::new(
                 io::ErrorKind::Other,
                 "explicit, unconditional error",
             )));
         }
-        for i in buf.iter_mut() {
+        for i in buf.filled_mut().iter_mut() {
             *i = 0;
         }
-        self.abort_after -= buf.len();
-        Poll::Ready(Ok(buf.len()))
+        self.abort_after -= buf.filled().len();
+        Poll::Ready(Ok(()))
     }
 }
