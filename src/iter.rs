@@ -266,7 +266,7 @@ impl Stream for ObjectStream {
         }
 
         let result = ready!(self.as_mut().fut.as_mut().unwrap().poll_unpin(cx));
-        self.as_mut().fut.as_mut().take();
+        self.as_mut().fut.take();
 
         match result {
             Ok(resp) => self.as_mut().iter.update_objects(resp),
