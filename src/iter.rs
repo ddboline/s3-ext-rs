@@ -256,13 +256,12 @@ impl Stream for ObjectStream {
                 return Poll::Ready(Some(Ok(object)));
             } else if self.as_mut().iter.exhausted {
                 return Poll::Ready(None);
-            } else {
-                let client = self.as_mut().iter.client.clone();
-                let request = self.as_mut().iter.request.clone();
-                self.as_mut()
-                    .fut
-                    .replace(Box::pin(Self::get_objects(client, request)));
             }
+            let client = self.as_mut().iter.client.clone();
+            let request = self.as_mut().iter.request.clone();
+            self.as_mut()
+                .fut
+                .replace(Box::pin(Self::get_objects(client, request)));
         }
 
         let result = ready!(self.as_mut().fut.as_mut().unwrap().poll_unpin(cx));
@@ -419,7 +418,8 @@ impl Stream for GetObjectStream {
                 let client = self.as_mut().iter.inner.client.clone();
                 let request = self.as_mut().iter.inner.request.clone();
                 self.as_mut()
-                    .fut0.replace(Box::pin(ObjectStream::get_objects(client, request)));
+                    .fut0
+                    .replace(Box::pin(ObjectStream::get_objects(client, request)));
             }
         }
 
@@ -455,7 +455,8 @@ impl Stream for GetObjectStream {
                 ..Default::default()
             };
             self.as_mut()
-                .fut1.replace(Box::pin(Self::get_object(client, request)));
+                .fut1
+                .replace(Box::pin(Self::get_object(client, request)));
         }
 
         assert!(self.as_mut().fut0.is_none());
