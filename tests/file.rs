@@ -1,6 +1,7 @@
 mod common;
 use crate::common::ReaderWithError;
 
+use log::warn;
 use rand::{thread_rng, Rng, RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use rusoto_core::RusotoError;
@@ -13,7 +14,6 @@ use tokio::{
     fs::File,
     io::{self, AsyncReadExt, ErrorKind},
 };
-use log::warn;
 
 const NUMBER_OF_TESTS: usize = 10;
 
