@@ -303,7 +303,7 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
         ..Default::default()
     };
     client
-        .upload_multipart(&mut &body[..], &put_request, part_size)
+        .upload_multipart(&mut &body[..], put_request, part_size)
         .await
         .unwrap();
 
@@ -325,7 +325,7 @@ async fn test_multipart_upload_is_aborted() {
             ..Default::default()
         };
         let err = client
-            .upload_multipart(&mut reader, &put_request, 5 * 1024 * 1024)
+            .upload_multipart(&mut reader, put_request, 5 * 1024 * 1024)
             .await
             .unwrap_err();
         match err {

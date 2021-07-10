@@ -24,7 +24,7 @@ where
 pub(crate) async fn upload_multipart<R>(
     client: &S3Client,
     source: &mut R,
-    target: &PutObjectRequest,
+    target: PutObjectRequest,
     part_size: usize,
 ) -> S3ExtResult<CompleteMultipartUploadOutput>
 where
@@ -73,6 +73,11 @@ where
         upload_id, target.bucket, target.key
     );
 
+    let bucket = target.bucket.to_owned();
+    let key = target.key.to_owned();
+    let request_payer = target.request_payer.to_owned();
+    let expected_bucket_owner = target.expected_bucket_owner.to_owned();
+
     match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id)
         .await
     {
@@ -84,11 +89,11 @@ where
             );
             if let Err(e) = client
                 .abort_multipart_upload(AbortMultipartUploadRequest {
-                    bucket: target.bucket.to_owned(),
-                    key: target.key.to_owned(),
-                    request_payer: target.request_payer.to_owned(),
+                    bucket,
+                    key,
+                    request_payer,
                     upload_id,
-                    expected_bucket_owner: target.expected_bucket_owner.to_owned(),
+                    expected_bucket_owner,
                 })
                 .await
             {
@@ -103,7 +108,7 @@ where
 async fn upload_multipart_needs_abort_on_error<R>(
     client: &S3Client,
     source: &mut R,
-    target: &PutObjectRequest,
+    target: PutObjectRequest,
     part_size: usize,
     upload_id: &str,
 ) -> S3ExtResult<CompleteMultipartUploadOutput>

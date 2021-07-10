@@ -72,7 +72,7 @@ pub trait S3Ext {
         target: F,
     ) -> S3ExtResult<GetObjectOutput>
     where
-        F: AsRef<Path> + Send;
+        F: AsRef<Path> + Send + Sync;
 
     /// Upload content of file to S3
     ///
@@ -88,7 +88,7 @@ pub trait S3Ext {
         target: PutObjectRequest,
     ) -> S3ExtResult<PutObjectOutput>
     where
-        F: AsRef<Path> + Send;
+        F: AsRef<Path> + Send + Sync;
 
     /// Upload content of file to S3 using multi-part upload
     ///
@@ -101,11 +101,11 @@ pub trait S3Ext {
     async fn upload_from_file_multipart<F>(
         &self,
         source: F,
-        target: &PutObjectRequest,
+        target: PutObjectRequest,
         part_size: usize,
     ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
-        F: AsRef<Path> + Send;
+        F: AsRef<Path> + Send + Sync;
 
     /// Get object and write it to `target`
     async fn download<W>(
@@ -143,7 +143,7 @@ pub trait S3Ext {
     async fn upload_multipart<R>(
         &self,
         source: &mut R,
-        target: &PutObjectRequest,
+        target: PutObjectRequest,
         part_size: usize,
     ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
@@ -180,7 +180,7 @@ impl S3Ext for S3Client {
         target: F,
     ) -> Result<GetObjectOutput, S3ExtError>
     where
-        F: AsRef<Path> + Send,
+        F: AsRef<Path> + Send + Sync,
     {
         debug!("downloading to file {:?}", target.as_ref());
         let mut resp = self.get_object(source).await?;
@@ -201,7 +201,7 @@ impl S3Ext for S3Client {
         target: PutObjectRequest,
     ) -> S3ExtResult<PutObjectOutput>
     where
-        F: AsRef<Path> + Send,
+        F: AsRef<Path> + Send + Sync,
     {
         debug!("uploading file {:?}", source.as_ref());
         let mut source = File::open(source).await?;
@@ -212,11 +212,11 @@ impl S3Ext for S3Client {
     async fn upload_from_file_multipart<F>(
         &self,
         source: F,
-        target: &PutObjectRequest,
+        target: PutObjectRequest,
         part_size: usize,
     ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
-        F: AsRef<Path> + Send,
+        F: AsRef<Path> + Send + Sync,
     {
         debug!("uploading file {:?}", source.as_ref());
         let mut source = File::open(source).await?;
@@ -253,7 +253,7 @@ impl S3Ext for S3Client {
     async fn upload_multipart<R>(
         &self,
         mut source: &mut R,
-        target: &PutObjectRequest,
+        target: PutObjectRequest,
         part_size: usize,
     ) -> S3ExtResult<CompleteMultipartUploadOutput>
     where
