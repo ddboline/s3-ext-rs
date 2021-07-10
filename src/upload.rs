@@ -136,7 +136,7 @@ where
                 sse_customer_algorithm: target.sse_customer_algorithm.clone(),
                 sse_customer_key: target.sse_customer_key.clone(),
                 sse_customer_key_md5: target.sse_customer_key_md5.clone(),
-                upload_id: upload_id.clone(),
+                upload_id: upload_id.to_owned(),
                 expected_bucket_owner: target.expected_bucket_owner.clone(),
             })
             .await?;
@@ -153,7 +153,7 @@ where
             key: target.key.clone(),
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
             request_payer: target.request_payer.clone(),
-            upload_id: upload_id.clone(),
+            upload_id: upload_id.to_owned(),
             expected_bucket_owner: target.expected_bucket_owner.clone(),
         })
         .await
