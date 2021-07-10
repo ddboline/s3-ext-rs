@@ -24,11 +24,12 @@ jobs:
             docker pull minio/minio && docker run -d --rm -p 9000:9000 --env "MINIO_ACCESS_KEY=ANTN35UAENTS5UIAEATD" \
             --env "MINIO_SECRET_KEY=TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur" \
             --env MINIO_DOMAIN=localhost minio/minio server /minio
-    - name: Run tests
-      run: cargo test --verbose
 
-    - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
+    - name: Run tests / generate code coverage
+      run: |
+        cargo test --verbose && \
+        cargo install cargo-tarpaulin && \
+        cargo tarpaulin --verbose --all-features --out Xml
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v1.0.2
