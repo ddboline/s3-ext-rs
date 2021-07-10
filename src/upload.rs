@@ -32,35 +32,35 @@ where
 {
     let upload = client
         .create_multipart_upload(CreateMultipartUploadRequest {
-            acl: target.acl.to_owned(),
-            bucket: target.bucket.to_owned(),
-            cache_control: target.cache_control.to_owned(),
-            content_disposition: target.content_disposition.to_owned(),
-            content_encoding: target.content_encoding.to_owned(),
-            content_language: target.content_language.to_owned(),
-            content_type: target.content_type.to_owned(),
-            expires: target.expires.to_owned(),
-            grant_full_control: target.grant_full_control.to_owned(),
-            grant_read: target.grant_read.to_owned(),
-            grant_read_acp: target.grant_read_acp.to_owned(),
-            grant_write_acp: target.grant_write_acp.to_owned(),
-            key: target.key.to_owned(),
-            metadata: target.metadata.to_owned(),
-            object_lock_legal_hold_status: target.object_lock_legal_hold_status.to_owned(),
-            object_lock_mode: target.object_lock_mode.to_owned(),
-            object_lock_retain_until_date: target.object_lock_retain_until_date.to_owned(),
-            request_payer: target.request_payer.to_owned(),
-            sse_customer_algorithm: target.sse_customer_algorithm.to_owned(),
-            sse_customer_key: target.sse_customer_key.to_owned(),
-            sse_customer_key_md5: target.sse_customer_key_md5.to_owned(),
-            ssekms_key_id: target.ssekms_key_id.to_owned(),
-            server_side_encryption: target.server_side_encryption.to_owned(),
-            storage_class: target.storage_class.to_owned(),
-            tagging: target.tagging.to_owned(),
-            website_redirect_location: target.website_redirect_location.to_owned(),
-            ssekms_encryption_context: target.ssekms_encryption_context.to_owned(),
-            bucket_key_enabled: target.bucket_key_enabled.to_owned(),
-            expected_bucket_owner: target.expected_bucket_owner.to_owned(),
+            acl: target.acl.clone(),
+            bucket: target.bucket.clone(),
+            cache_control: target.cache_control.clone(),
+            content_disposition: target.content_disposition.clone(),
+            content_encoding: target.content_encoding.clone(),
+            content_language: target.content_language.clone(),
+            content_type: target.content_type.clone(),
+            expires: target.expires.clone(),
+            grant_full_control: target.grant_full_control.clone(),
+            grant_read: target.grant_read.clone(),
+            grant_read_acp: target.grant_read_acp.clone(),
+            grant_write_acp: target.grant_write_acp.clone(),
+            key: target.key.clone(),
+            metadata: target.metadata.clone(),
+            object_lock_legal_hold_status: target.object_lock_legal_hold_status.clone(),
+            object_lock_mode: target.object_lock_mode.clone(),
+            object_lock_retain_until_date: target.object_lock_retain_until_date.clone(),
+            request_payer: target.request_payer.clone(),
+            sse_customer_algorithm: target.sse_customer_algorithm.clone(),
+            sse_customer_key: target.sse_customer_key.clone(),
+            sse_customer_key_md5: target.sse_customer_key_md5.clone(),
+            ssekms_key_id: target.ssekms_key_id.clone(),
+            server_side_encryption: target.server_side_encryption.clone(),
+            storage_class: target.storage_class.clone(),
+            tagging: target.tagging.clone(),
+            website_redirect_location: target.website_redirect_location.clone(),
+            ssekms_encryption_context: target.ssekms_encryption_context.clone(),
+            bucket_key_enabled: target.bucket_key_enabled.clone(),
+            expected_bucket_owner: target.expected_bucket_owner.clone(),
         })
         .await?;
 
@@ -73,10 +73,10 @@ where
         upload_id, target.bucket, target.key
     );
 
-    let bucket = target.bucket.to_owned();
-    let key = target.key.to_owned();
-    let request_payer = target.request_payer.to_owned();
-    let expected_bucket_owner = target.expected_bucket_owner.to_owned();
+    let bucket = target.bucket.clone();
+    let key = target.key.clone();
+    let request_payer = target.request_payer.clone();
+    let expected_bucket_owner = target.expected_bucket_owner.clone();
 
     match upload_multipart_needs_abort_on_error(&client, source, target, part_size, &upload_id)
         .await
@@ -136,7 +136,7 @@ where
                 sse_customer_algorithm: target.sse_customer_algorithm.clone(),
                 sse_customer_key: target.sse_customer_key.clone(),
                 sse_customer_key_md5: target.sse_customer_key_md5.clone(),
-                upload_id: upload_id.to_owned(),
+                upload_id: upload_id.clone(),
                 expected_bucket_owner: target.expected_bucket_owner.clone(),
             })
             .await?;
@@ -149,12 +149,12 @@ where
 
     client
         .complete_multipart_upload(CompleteMultipartUploadRequest {
-            bucket: target.bucket.to_owned(),
-            key: target.key.to_owned(),
+            bucket: target.bucket.clone(),
+            key: target.key.clone(),
             multipart_upload: Some(CompletedMultipartUpload { parts: Some(parts) }),
-            request_payer: target.request_payer.to_owned(),
-            upload_id: upload_id.to_owned(),
-            expected_bucket_owner: target.expected_bucket_owner.to_owned(),
+            request_payer: target.request_payer.clone(),
+            upload_id: upload_id.clone(),
+            expected_bucket_owner: target.expected_bucket_owner.clone(),
         })
         .await
         .map_err(|e| e.into())
