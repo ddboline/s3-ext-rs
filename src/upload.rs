@@ -59,7 +59,7 @@ where
             tagging: target.tagging.clone(),
             website_redirect_location: target.website_redirect_location.clone(),
             ssekms_encryption_context: target.ssekms_encryption_context.clone(),
-            bucket_key_enabled: target.bucket_key_enabled.clone(),
+            bucket_key_enabled: target.bucket_key_enabled,
             expected_bucket_owner: target.expected_bucket_owner.clone(),
         })
         .await?;
@@ -90,10 +90,10 @@ where
             if let Err(e) = client
                 .abort_multipart_upload(AbortMultipartUploadRequest {
                     bucket,
+                    expected_bucket_owner,
                     key,
                     request_payer,
                     upload_id,
-                    expected_bucket_owner,
                 })
                 .await
             {
