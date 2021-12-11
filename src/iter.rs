@@ -129,11 +129,11 @@ pub struct ObjectIter {
 }
 
 impl ObjectIter {
-    fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
         let request = ListObjectsV2Request {
-            bucket: bucket.to_owned(),
+            bucket: bucket.into(),
             max_keys: Some(1000),
-            prefix: prefix.map(|s| s.to_owned()),
+            prefix: prefix.map(|s| s.into()),
             ..Default::default()
         };
 
@@ -221,7 +221,7 @@ pub struct ObjectStream {
 }
 
 impl ObjectStream {
-    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    pub(crate) fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
         Self {
             iter: ObjectIter::new(client, bucket, prefix),
             fut: None,
@@ -289,10 +289,11 @@ pub struct GetObjectIter {
 }
 
 impl GetObjectIter {
-    fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
+        let bucket = bucket.into();
         GetObjectIter {
-            inner: ObjectIter::new(client, bucket, prefix),
-            bucket: bucket.to_owned(),
+            inner: ObjectIter::new(client, &bucket, prefix),
+            bucket: bucket,
         }
     }
 
@@ -368,7 +369,7 @@ pub struct GetObjectStream {
 }
 
 impl GetObjectStream {
-    pub(crate) fn new(client: &S3Client, bucket: &str, prefix: Option<&str>) -> Self {
+    pub(crate) fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
         Self {
             iter: GetObjectIter::new(client, bucket, prefix),
             next: None,

@@ -53,12 +53,12 @@ use tokio::{
 /// Create client using given static access/secret keys
 pub fn new_s3client_with_credentials(
     region: Region,
-    access_key: String,
-    secret_key: String,
+    access_key: impl Into<String>,
+    secret_key: impl Into<String>,
 ) -> Result<S3Client, TlsError> {
     Ok(S3Client::new_with(
         HttpClient::new()?,
-        StaticProvider::new_minimal(access_key, secret_key),
+        StaticProvider::new_minimal(access_key.into(), secret_key.into()),
         region,
     ))
 }
@@ -154,22 +154,22 @@ pub trait S3Ext {
     /// calling into_iter()
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_objects(&self, bucket: &str) -> ObjectStream;
+    fn stream_objects(&self, bucket: impl Into<String>) -> ObjectStream;
 
     /// Stream over objects with given `prefix`
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectStream;
+    fn stream_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> ObjectStream;
 
     /// Stream over all objects; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_get_objects(&self, bucket: &str) -> GetObjectStream;
+    fn stream_get_objects(&self, bucket: impl Into<String>) -> GetObjectStream;
 
     /// Stream over objects with given `prefix`; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectStream;
+    fn stream_get_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> GetObjectStream;
 }
 
 #[async_trait]
@@ -263,22 +263,22 @@ impl S3Ext for S3Client {
     }
 
     #[inline]
-    fn stream_objects(&self, bucket: &str) -> ObjectStream {
-        ObjectStream::new(self, bucket, None)
+    fn stream_objects(&self, bucket: impl Into<String>) -> ObjectStream {
+        ObjectStream::new(self, bucket, None as Option<&str>)
     }
 
     #[inline]
-    fn stream_objects_with_prefix(&self, bucket: &str, prefix: &str) -> ObjectStream {
+    fn stream_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> ObjectStream {
         ObjectStream::new(self, bucket, Some(prefix))
     }
 
     #[inline]
-    fn stream_get_objects(&self, bucket: &str) -> GetObjectStream {
-        GetObjectStream::new(self, bucket, None)
+    fn stream_get_objects(&self, bucket: impl Into<String>) -> GetObjectStream {
+        GetObjectStream::new(self, bucket, None as Option<&str>)
     }
 
     #[inline]
-    fn stream_get_objects_with_prefix(&self, bucket: &str, prefix: &str) -> GetObjectStream {
+    fn stream_get_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> GetObjectStream {
         GetObjectStream::new(self, bucket, Some(prefix))
     }
 }
