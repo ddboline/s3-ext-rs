@@ -152,7 +152,7 @@ impl ObjectIter {
     }
 
     fn update_objects(&mut self, resp: ListObjectsV2Output) {
-        self.objects = resp.contents.unwrap_or_else(Vec::new).into_iter();
+        self.objects = resp.contents.unwrap_or_default().into_iter();
         match resp.next_continuation_token {
             next @ Some(_) => self.request.continuation_token = next,
             None => self.exhausted = true,
@@ -293,7 +293,7 @@ impl GetObjectIter {
         let bucket = bucket.into();
         GetObjectIter {
             inner: ObjectIter::new(client, &bucket, prefix),
-            bucket: bucket,
+            bucket,
         }
     }
 

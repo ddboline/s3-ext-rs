@@ -205,7 +205,7 @@ impl S3Ext for S3Client {
     {
         debug!("uploading file {:?}", source.as_ref());
         let mut source = File::open(source).await?;
-        upload::upload(&self, &mut source, target).await
+        upload::upload(self, &mut source, target).await
     }
 
     #[inline]
@@ -220,7 +220,7 @@ impl S3Ext for S3Client {
     {
         debug!("uploading file {:?}", source.as_ref());
         let mut source = File::open(source).await?;
-        upload::upload_multipart(&self, &mut source, target, part_size).await
+        upload::upload_multipart(self, &mut source, target, part_size).await
     }
 
     async fn download<W>(
@@ -246,7 +246,7 @@ impl S3Ext for S3Client {
     where
         R: io::AsyncRead + Unpin + Send,
     {
-        upload::upload(&self, source, target).await
+        upload::upload(self, source, target).await
     }
 
     #[inline]
@@ -259,7 +259,7 @@ impl S3Ext for S3Client {
     where
         R: io::AsyncRead + Unpin + Send,
     {
-        upload::upload_multipart(&self, &mut source, target, part_size).await
+        upload::upload_multipart(self, &mut source, target, part_size).await
     }
 
     #[inline]
