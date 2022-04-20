@@ -1,7 +1,7 @@
 [package]
 name = "s3-ext"
 description = "Simple Storage Service Extensions for Rust"
-version = "0.4.1"
+version = "0.4.2"
 documentation = "https://docs.rs/s3-ext"
 repository = "https://github.com/ddboline/s3-ext-rs"
 authors = ["Daniel Boline <ddboline@gmail.com>", "Peter Gerber <peter@arbitrary.ch>"]
