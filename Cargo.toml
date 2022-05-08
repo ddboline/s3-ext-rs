@@ -33,5 +33,5 @@ env_logger = "0.9"
 
 [features]
 default = ["rustls"]
-rustls = ["rusoto_core/rustls", "rusoto_core/rustls"]
-native-tls = ["rusoto_core/native-tls", "rusoto_s3/native-tls"]
+rustls = ["rusoto_core/rustls", "rusoto_s3/rustls"]
+# native-tls = ["rusoto_core/native-tls", "rusoto_s3/native-tls"]

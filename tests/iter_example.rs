@@ -4,25 +4,32 @@ use futures::{
 };
 use rand::RngCore;
 use rusoto_core::Region;
-use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3};
+use rusoto_s3::{
+    CreateBucketRequest, DeleteBucketRequest, DeleteObjectRequest, PutObjectRequest, S3Client, S3,
+};
 use s3_ext::{error::S3ExtError, S3Ext};
 use std::env;
 use tokio::io::AsyncReadExt;
 
 #[tokio::test]
 async fn test_iter_example() -> Result<(), S3ExtError> {
-    let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
+    let bucket = format!(
+        "test-s3-ext-iter-module-example-{}",
+        rand::thread_rng().next_u64()
+    );
 
     // setup client
-
-    let access_key = "ANTN35UAENTS5UIAEATD".to_string();
-    let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
-    let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
-    let region = Region::Custom {
-        name: "eu-west-1".to_string(),
-        endpoint,
+    let client = if let Ok(endpoint) = env::var("S3_ENDPOINT") {
+        let access_key = "ANTN35UAENTS5UIAEATD".to_string();
+        let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
+        let region = Region::Custom {
+            name: "eu-west-1".to_string(),
+            endpoint,
+        };
+        s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?
+    } else {
+        S3Client::new(Region::UsEast1)
     };
-    let client = s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?;
 
     // create bucket
 
@@ -34,7 +41,7 @@ async fn test_iter_example() -> Result<(), S3ExtError> {
         .await?;
 
     // create test objects
-
+    let mut keys = Vec::new();
     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
         client
             .put_object(PutObjectRequest {
@@ -45,6 +52,7 @@ async fn test_iter_example() -> Result<(), S3ExtError> {
             })
             .await
             .map(|_| ())?;
+        keys.push(obj);
     }
 
     // iterate over objects objects (sorted alphabetically)
@@ -91,6 +99,24 @@ async fn test_iter_example() -> Result<(), S3ExtError> {
         .collect();
     let results: Result<Vec<_>, _> = try_join_all(futures).await;
     let bodies: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
+
+    for key in keys {
+        client
+            .delete_object(DeleteObjectRequest {
+                bucket: bucket.clone(),
+                key: key.to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+    }
+    client
+        .delete_bucket(DeleteBucketRequest {
+            bucket: bucket.into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 
     assert_eq!(
         bodies.as_slice(),

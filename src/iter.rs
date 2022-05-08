@@ -17,18 +17,21 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), S3ExtError> {
-//!     let bucket = format!("iter-module-example-{}", rand::thread_rng().next_u64());
+//!     let bucket = format!("test-s3-ext-iter-module-example-{}", rand::thread_rng().next_u64());
 //!
 //!     // setup client
-//!
-//!     let access_key = "ANTN35UAENTS5UIAEATD".to_string();
-//!     let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
-//!     let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
-//!     let region = Region::Custom {
-//!         name: "eu-west-1".to_string(),
-//!         endpoint,
-//!     };
-//!     let client = s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?;
+//!     let client = if let Ok(endpoint) = env::var("S3_ENDPOINT") {
+//!         let access_key = "ANTN35UAENTS5UIAEATD".to_string();
+//!         let secret_key = "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_string();
+//!         let region = Region::Custom {
+//!             name: "eu-west-1".to_string(),
+//!             endpoint,
+//!         };
+//!         s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?
+//!     } else {
+//!         S3Client::new(Region::UsEast1);
+//!     }
+//!     let client =
 //!
 //!     // create bucket
 //!
@@ -40,7 +43,7 @@
 //!         .await?;
 //!
 //!     // create test objects
-//!
+//!     let mut keys = Vec::new();
 //!     for obj in (0..5).map(|n| format!("object_{:02}", n)) {
 //!         client
 //!             .put_object(PutObjectRequest {
@@ -50,6 +53,7 @@
 //!                 ..Default::default()
 //!             })
 //!             .await?;
+//!         keys.push(obj);
 //!     }
 //!
 //!     // iterate over objects objects (sorted alphabetically)
@@ -95,6 +99,17 @@
 //!         .collect();
 //!     let results: Result<Vec<_>, _> = try_join_all(futures).await;
 //!     let objects: Vec<_> = results?.into_iter().filter_map(|x| x).collect();
+//!     for key in keys {
+//!     client.delete_object(DeleteObjectRequest {
+//!         bucket: bucket.clone(),
+//!         key: key.to_string(),
+//!         ..Default::default()
+//!     }).await.unwrap();
+//!     }
+//!     client.delete_bucket(DeleteBucketRequest {
+//!         bucket: bucket.into(),
+//!         ..Default::default()
+//!     }).await.unwrap();
 //!
 //!     for (i, (key, body)) in objects.iter().enumerate() {
 //!         let expected = format!("object_{:02}", i);
@@ -129,7 +144,11 @@ pub struct ObjectIter {
 }
 
 impl ObjectIter {
-    fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
+    fn new(
+        client: &S3Client,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Self {
         let request = ListObjectsV2Request {
             bucket: bucket.into(),
             max_keys: Some(1000),
@@ -221,7 +240,11 @@ pub struct ObjectStream {
 }
 
 impl ObjectStream {
-    pub(crate) fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
+    pub(crate) fn new(
+        client: &S3Client,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Self {
         Self {
             iter: ObjectIter::new(client, bucket, prefix),
             fut: None,
@@ -289,7 +312,11 @@ pub struct GetObjectIter {
 }
 
 impl GetObjectIter {
-    fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
+    fn new(
+        client: &S3Client,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Self {
         let bucket = bucket.into();
         GetObjectIter {
             inner: ObjectIter::new(client, &bucket, prefix),
@@ -369,7 +396,11 @@ pub struct GetObjectStream {
 }
 
 impl GetObjectStream {
-    pub(crate) fn new(client: &S3Client, bucket: impl Into<String>, prefix: Option<impl Into<String>>) -> Self {
+    pub(crate) fn new(
+        client: &S3Client,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Self {
         Self {
             iter: GetObjectIter::new(client, bucket, prefix),
             next: None,

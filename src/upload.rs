@@ -78,8 +78,7 @@ where
     let request_payer = target.request_payer.clone();
     let expected_bucket_owner = target.expected_bucket_owner.clone();
 
-    match upload_multipart_needs_abort_on_error(client, source, target, part_size, &upload_id)
-        .await
+    match upload_multipart_needs_abort_on_error(client, source, target, part_size, &upload_id).await
     {
         ok @ Ok(_) => ok,
         err @ Err(_) => {

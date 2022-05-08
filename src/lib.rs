@@ -159,7 +159,11 @@ pub trait S3Ext {
     /// Stream over objects with given `prefix`
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> ObjectStream;
+    fn stream_objects_with_prefix(
+        &self,
+        bucket: impl Into<String>,
+        prefix: impl Into<String>,
+    ) -> ObjectStream;
 
     /// Stream over all objects; fetching objects as needed
     ///
@@ -169,7 +173,11 @@ pub trait S3Ext {
     /// Stream over objects with given `prefix`; fetching objects as needed
     ///
     /// Objects are lexicographically sorted by their key.
-    fn stream_get_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> GetObjectStream;
+    fn stream_get_objects_with_prefix(
+        &self,
+        bucket: impl Into<String>,
+        prefix: impl Into<String>,
+    ) -> GetObjectStream;
 }
 
 #[async_trait]
@@ -268,7 +276,11 @@ impl S3Ext for S3Client {
     }
 
     #[inline]
-    fn stream_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> ObjectStream {
+    fn stream_objects_with_prefix(
+        &self,
+        bucket: impl Into<String>,
+        prefix: impl Into<String>,
+    ) -> ObjectStream {
         ObjectStream::new(self, bucket, Some(prefix))
     }
 
@@ -278,7 +290,11 @@ impl S3Ext for S3Client {
     }
 
     #[inline]
-    fn stream_get_objects_with_prefix(&self, bucket: impl Into<String>, prefix: impl Into<String>) -> GetObjectStream {
+    fn stream_get_objects_with_prefix(
+        &self,
+        bucket: impl Into<String>,
+        prefix: impl Into<String>,
+    ) -> GetObjectStream {
         GetObjectStream::new(self, bucket, Some(prefix))
     }
 }

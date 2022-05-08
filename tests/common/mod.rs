@@ -6,28 +6,36 @@ use core::{
 };
 use rand::{distributions::Alphanumeric, Rng};
 use rusoto_core::Region;
-use rusoto_s3::{CreateBucketRequest, GetObjectRequest, PutObjectRequest, S3Client, S3};
+use rusoto_s3::{
+    CreateBucketRequest, DeleteBucketRequest, DeleteObjectRequest, GetObjectRequest,
+    PutObjectRequest, S3Client, S3,
+};
 use s3_ext::new_s3client_with_credentials;
 use std::env;
 use tokio::io::{self, AsyncRead, AsyncReadExt, ReadBuf};
 
 pub async fn create_test_bucket() -> (S3Client, String) {
-    let endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string());
-    let client = new_s3client_with_credentials(
-        Region::Custom {
-            name: "eu-west-1".to_owned(),
-            endpoint,
-        },
-        "ANTN35UAENTS5UIAEATD".to_owned(),
-        "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_owned(),
-    )
-    .unwrap();
+    let client = if let Ok(endpoint) = env::var("S3_ENDPOINT") {
+        new_s3client_with_credentials(
+            Region::Custom {
+                name: "eu-west-1".to_owned(),
+                endpoint,
+            },
+            "ANTN35UAENTS5UIAEATD".to_owned(),
+            "TtnuieannGt2rGuie2t8Tt7urarg5nauedRndrur".to_owned(),
+        )
+        .unwrap()
+    } else {
+        S3Client::new(Region::UsEast1)
+    };
     let bucket: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
-        .take(63)
+        .take(56)
         .map(|x| x as char)
         .collect();
     let bucket = bucket.to_lowercase();
+    let bucket = format!("s3-ext-{bucket}");
+    println!("{bucket} {}", bucket.len());
 
     client
         .create_bucket(CreateBucketRequest {
@@ -38,6 +46,26 @@ pub async fn create_test_bucket() -> (S3Client, String) {
         .unwrap();
 
     (client, bucket)
+}
+
+pub async fn delete_test_bucket(client: &S3Client, bucket: &str, keys: &[&str]) {
+    for key in keys {
+        client
+            .delete_object(DeleteObjectRequest {
+                bucket: bucket.into(),
+                key: key.to_string(),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+    }
+    client
+        .delete_bucket(DeleteBucketRequest {
+            bucket: bucket.into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
 }
 
 pub async fn put_object(client: &S3Client, bucket: &str, key: &str, data: Vec<u8>) {

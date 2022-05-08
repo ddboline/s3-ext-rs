@@ -9,9 +9,11 @@ use tokio::io::AsyncReadExt;
 #[tokio::test]
 async fn stream_objects() {
     let (client, bucket) = create_test_bucket().await;
+    let mut keys = Vec::new();
 
     for i in (0..2003).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
+        keys.push(i);
     }
 
     let mut iter = client.stream_objects(&bucket);
@@ -20,14 +22,18 @@ async fn stream_objects() {
         assert_eq!(object.key.unwrap(), i);
     }
     assert!(iter.next().await.is_none());
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
 async fn stream_objects_with_prefix() {
     let (client, bucket) = create_test_bucket().await;
+    let mut keys = Vec::new();
 
     for i in (0..1005).map(|i| format!("a/{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
+        keys.push(i);
     }
     put_object(&client, &bucket, "b/1234", vec![]).await;
 
@@ -37,14 +43,18 @@ async fn stream_objects_with_prefix() {
         assert_eq!(object.key.unwrap(), i);
     }
     assert!(iter.next().await.is_none());
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
 async fn stream_objects_nth() {
     let (client, bucket) = create_test_bucket().await;
+    let mut keys = Vec::new();
 
     for i in (1..2081).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
+        keys.push(i);
     }
 
     let mut iter = client.stream_objects(&bucket).into_iter();
@@ -71,6 +81,9 @@ async fn stream_objects_nth() {
 
     let mut iter = client.stream_objects(&bucket).into_iter();
     let obj = iter.nth(2030).await.unwrap().unwrap();
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
+
     assert_eq!(obj.key.unwrap(), "2031");
 }
 
@@ -88,8 +101,11 @@ async fn stream_objects_count() {
         0
     );
 
+    let mut keys = Vec::new();
+
     for i in (0..2122).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
+        keys.push(i);
     }
 
     assert_eq!(
@@ -117,6 +133,9 @@ async fn stream_objects_count() {
     let mut iter = client.stream_objects(&bucket).into_iter();
     assert!(iter.nth(2122).await.unwrap().is_none());
     assert_eq!(iter.count().await.unwrap(), 0);
+
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
@@ -131,8 +150,10 @@ async fn stream_objects_last() {
         .unwrap()
         .is_none());
 
+    let mut keys = Vec::new();
     for i in (1..1000).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, vec![]).await;
+        keys.push(i);
     }
 
     assert_eq!(
@@ -173,14 +194,18 @@ async fn stream_objects_last() {
             .unwrap(),
         "1001"
     );
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
 async fn stream_get_objects() {
     let (client, bucket) = create_test_bucket().await;
 
+    let mut keys = Vec::new();
     for i in (1..1004).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
+        keys.push(i);
     }
 
     assert_eq!(
@@ -208,14 +233,18 @@ async fn stream_get_objects() {
         assert_eq!(body, i.as_bytes());
     }
     assert!(iter.next().await.is_none());
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
 async fn stream_get_objects_nth() {
     let (client, bucket) = create_test_bucket().await;
 
+    let mut keys = Vec::new();
     for i in (1..1003).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
+        keys.push(i);
     }
 
     let mut iter = client.stream_get_objects(&bucket).into_iter();
@@ -225,14 +254,18 @@ async fn stream_get_objects_nth() {
     assert_key_and_body(iter.nth(0).await, "1001").await;
     assert_key_and_body(iter.nth(0).await, "1002").await;
     assert!(iter.nth(0).await.unwrap().is_none());
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
 async fn stream_get_objects_with_prefix_count() {
     let (client, bucket) = create_test_bucket().await;
 
+    let mut keys = vec!["a/0020".to_string(), "c/0030".to_string()];
     put_object(&client, &bucket, "a/0020", vec![]).await;
     put_object(&client, &bucket, "c/0030", vec![]).await;
+
     assert_eq!(
         client
             .stream_get_objects_with_prefix(&bucket, "b/")
@@ -245,6 +278,7 @@ async fn stream_get_objects_with_prefix_count() {
 
     for i in (0..533).map(|i| format!("b/{:04}", i)) {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
+        keys.push(i);
     }
 
     assert_eq!(
@@ -256,6 +290,8 @@ async fn stream_get_objects_with_prefix_count() {
             .unwrap(),
         533
     );
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 #[tokio::test]
@@ -270,8 +306,10 @@ async fn stream_get_objects_last() {
         .unwrap()
         .is_none());
 
+    let mut keys = Vec::new();
     for i in (1..1002).map(|i| format!("{:04}", i)) {
         put_object(&client, &bucket, &i, i.clone().into_bytes()).await;
+        keys.push(i);
     }
 
     assert_key_and_body(
@@ -279,6 +317,8 @@ async fn stream_get_objects_last() {
         "1001",
     )
     .await;
+    let keys: Vec<_> = keys.iter().map(String::as_str).collect();
+    common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
 async fn assert_key_and_body(

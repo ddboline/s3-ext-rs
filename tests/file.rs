@@ -131,6 +131,8 @@ async fn test_download() {
             .await
             .unwrap();
 
+        common::delete_test_bucket(&client, &bucket, &[key]).await;
+
         assert_eq!(resp.content_length, Some(data.len() as i64));
         assert_eq!(data, target);
         true
@@ -165,13 +167,15 @@ async fn download_large_object() {
         .await
         .unwrap();
 
+    common::delete_test_bucket(&client, &bucket, &[key]).await;
+
     assert_eq!(resp.content_length, Some(data.len() as i64));
     assert_eq!(&data[..], &target[..]);
 }
 
 #[tokio::test]
 async fn no_object_created_when_file_cannot_be_opened_for_upload() {
-    let (client, _) = common::create_test_bucket().await;
+    let (client, bucket) = common::create_test_bucket().await;
     let result = client
         .upload_from_file(
             "/no_such_file_or_directory_0V185rt1LhV2WwZdveEM",
@@ -182,6 +186,7 @@ async fn no_object_created_when_file_cannot_be_opened_for_upload() {
             },
         )
         .await;
+    common::delete_test_bucket(&client, &bucket, &[]).await;
     match result {
         Err(S3ExtError::IoError(ref e)) if e.kind() == io::ErrorKind::NotFound => (),
         r => panic!("unexpected result: {:?}", r),
@@ -218,7 +223,6 @@ async fn upload() {
         )
         .await
         .unwrap();
-
     assert_eq!(
         common::get_body(&client, &bucket, "from_file").await,
         content
@@ -227,6 +231,7 @@ async fn upload() {
         common::get_body(&client, &bucket, "from_read").await,
         content
     );
+    common::delete_test_bucket(&client, &bucket, &["from_file", "from_read"]).await;
 }
 
 #[tokio::test]
@@ -244,8 +249,10 @@ async fn test_upload_arbitrary() {
             )
             .await
             .unwrap();
+        let observed_body = common::get_body(&client, &bucket, "some_key").await;
+        common::delete_test_bucket(&client, &bucket, &["some_key"]).await;
 
-        common::get_body(&client, &bucket, "some_key").await == body
+        observed_body == body
     }
     let mut gen = thread_rng();
     for _ in 0..NUMBER_OF_TESTS {
@@ -306,8 +313,11 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
         .upload_multipart(&mut &body[..], put_request, part_size)
         .await
         .unwrap();
+    let observed_body = common::get_body(&client, &bucket, "object123").await;
 
-    common::get_body(&client, &bucket, "object123").await == body
+    common::delete_test_bucket(&client, &bucket, &["object123"]).await;
+
+    observed_body == body
 }
 
 #[tokio::test]
@@ -347,6 +357,8 @@ async fn test_multipart_upload_is_aborted() {
             })
             .await
             .unwrap();
+
+        common::delete_test_bucket(&client, &bucket, &["object123"]).await;
         parts.uploads.is_none()
     }
     for _ in 0..10 {
