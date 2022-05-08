@@ -8,14 +8,14 @@
 //! use std::future::Future;
 //! use rand::RngCore;
 //! use rusoto_core::Region;
-//! use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3, S3Client};
+//! use rusoto_s3::{CreateBucketRequest, PutObjectRequest, S3, S3Client, DeleteObjectRequest, DeleteBucketRequest};
 //! use s3_ext::S3Ext;
 //! use std::env;
 //! use tokio::io::AsyncReadExt;
 //!
 //! use s3_ext::error::S3ExtError;
 //!
-//! #[tokio::main(flavor = "multi_thread")]
+//! #[tokio::main]
 //! async fn main() -> Result<(), S3ExtError> {
 //!     let bucket = format!("s3-ext-iter-module-example-{}", rand::thread_rng().next_u64());
 //!
@@ -29,9 +29,8 @@
 //!         };
 //!         s3_ext::new_s3client_with_credentials(region, access_key, secret_key)?
 //!     } else {
-//!         S3Client::new(Region::UsEast1);
-//!     }
-//!     let client =
+//!         S3Client::new(Region::UsEast1)
+//!     };
 //!
 //!     // create bucket
 //!
