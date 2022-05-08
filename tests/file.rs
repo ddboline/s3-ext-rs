@@ -36,6 +36,8 @@ async fn target_file_already_exists() {
         )
         .await;
 
+    common::delete_test_bucket(&client, &bucket, &[key]).await;
+
     match result {
         Err(S3ExtError::IoError(ref e)) if e.kind() == ErrorKind::AlreadyExists => (),
         e => panic!("unexpected result: {:?}", e),
@@ -60,6 +62,8 @@ async fn target_file_not_created_when_object_does_not_exist() {
             &file,
         )
         .await;
+
+    common::delete_test_bucket(&client, &bucket, &[]).await;
 
     match result {
         Err(S3ExtError::GetObjectError(RusotoError::Service(GetObjectError::NoSuchKey(_)))) => (),
@@ -103,6 +107,8 @@ async fn test_download_to_file() {
             .read_to_end(&mut buf)
             .await
             .unwrap();
+
+        common::delete_test_bucket(&client, &bucket, &[key]).await;
 
         assert_eq!(buf, data);
         true
