@@ -12,10 +12,11 @@ use rusoto_s3::{
 };
 use s3_ext::new_s3client_with_credentials;
 use std::env;
+use sts_profile_auth::get_client_sts;
 use tokio::io::{self, AsyncRead, AsyncReadExt, ReadBuf};
 
-pub async fn create_test_bucket() -> (S3Client, String) {
-    let client = if let Ok(endpoint) = env::var("S3_ENDPOINT") {
+pub fn get_client() -> S3Client {
+    if let Ok(endpoint) = env::var("S3_ENDPOINT") {
         new_s3client_with_credentials(
             Region::Custom {
                 name: "eu-west-1".to_owned(),
@@ -26,8 +27,11 @@ pub async fn create_test_bucket() -> (S3Client, String) {
         )
         .unwrap()
     } else {
-        S3Client::new(Region::UsEast1)
-    };
+        get_client_sts!(S3Client, Region::UsEast1).unwrap()
+    }
+}
+
+pub async fn create_test_bucket(client: &S3Client) -> String {
     let bucket: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(56)
@@ -45,7 +49,7 @@ pub async fn create_test_bucket() -> (S3Client, String) {
         .await
         .unwrap();
 
-    (client, bucket)
+    bucket
 }
 
 pub async fn delete_test_bucket(client: &S3Client, bucket: &str, keys: &[&str]) {

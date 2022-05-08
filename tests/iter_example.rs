@@ -11,10 +11,10 @@ use s3_ext::{error::S3ExtError, S3Ext};
 use std::env;
 use tokio::io::AsyncReadExt;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_iter_example() -> Result<(), S3ExtError> {
     let bucket = format!(
-        "test-s3-ext-iter-module-example-{}",
+        "s3-ext-iter-module-example-{}",
         rand::thread_rng().next_u64()
     );
 

@@ -17,9 +17,10 @@ use tokio::{
 
 const NUMBER_OF_TESTS: usize = 10;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn target_file_already_exists() {
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
     let key = "abcd";
 
     common::put_object(&client, &bucket, key, vec![]).await;
@@ -41,9 +42,11 @@ async fn target_file_already_exists() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn target_file_not_created_when_object_does_not_exist() {
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let dir = TempDir::new("").unwrap();
     let file = dir.path().join("no_such_file");
 
@@ -68,10 +71,12 @@ async fn target_file_not_created_when_object_does_not_exist() {
     );
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_download_to_file() {
     async fn download_to_file(data: Vec<u8>) -> bool {
-        let (client, bucket) = common::create_test_bucket().await;
+        let client = common::get_client();
+        let bucket = common::create_test_bucket(&client).await;
+
         let dir = TempDir::new("").unwrap();
         let file = dir.path().join("data");
         let key = "some_key";
@@ -110,10 +115,12 @@ async fn test_download_to_file() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_download() {
     async fn download(data: Vec<u8>) -> bool {
-        let (client, bucket) = common::create_test_bucket().await;
+        let client = common::get_client();
+        let bucket = common::create_test_bucket(&client).await;
+
         let key = "abc/def/ghi";
         let mut target = Vec::new();
 
@@ -145,9 +152,11 @@ async fn test_download() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn download_large_object() {
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let key = "abc/def/ghi";
     let mut data = vec![0; 104_857_601];
     XorShiftRng::from_entropy().fill_bytes(data.as_mut());
@@ -173,9 +182,11 @@ async fn download_large_object() {
     assert_eq!(&data[..], &target[..]);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn no_object_created_when_file_cannot_be_opened_for_upload() {
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let result = client
         .upload_from_file(
             "/no_such_file_or_directory_0V185rt1LhV2WwZdveEM",
@@ -193,9 +204,11 @@ async fn no_object_created_when_file_cannot_be_opened_for_upload() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn upload() {
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let mut file = File::open(file!()).await.unwrap();
     let mut content = Vec::new();
     file.read_to_end(&mut content).await.unwrap();
@@ -234,10 +247,12 @@ async fn upload() {
     common::delete_test_bucket(&client, &bucket, &["from_file", "from_read"]).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_upload_arbitrary() {
     async fn upload_arbitrary(body: Vec<u8>) -> bool {
-        let (client, bucket) = common::create_test_bucket().await;
+        let client = common::get_client();
+        let bucket = common::create_test_bucket(&client).await;
+
         client
             .upload(
                 &mut &body[..],
@@ -262,7 +277,7 @@ async fn test_upload_arbitrary() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_upload_multipart() {
     async fn upload_multipart() -> bool {
         common::init_logger();
@@ -277,7 +292,7 @@ async fn test_upload_multipart() {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn upload_multipart_test_part_boundary() {
     common::init_logger();
     for part_count in 1..5 {
@@ -300,7 +315,9 @@ async fn upload_multipart_test_part_boundary() {
 
 async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_size: u64) -> bool {
     common::init_logger();
-    let (client, bucket) = common::create_test_bucket().await;
+    let client = common::get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let mut body = vec![0; obj_size as usize];
     rng.fill_bytes(&mut body);
 
@@ -320,11 +337,13 @@ async fn upload_multipart_helper(rng: &mut XorShiftRng, part_size: usize, obj_si
     observed_body == body
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_multipart_upload_is_aborted() {
     async fn multipart_upload_is_aborted() -> bool {
         common::init_logger();
-        let (client, bucket) = common::create_test_bucket().await;
+        let client = common::get_client();
+        let bucket = common::create_test_bucket(&client).await;
+
         let abort_after = rand::thread_rng().gen_range(0..=10 * 1024 * 1024); // between 0 and 10 MiB
         println!("abort location: {}", abort_after);
         let mut reader = ReaderWithError { abort_after };

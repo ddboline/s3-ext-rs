@@ -15,9 +15,9 @@
 //!
 //! use s3_ext::error::S3ExtError;
 //!
-//! #[tokio::main]
+//! #[tokio::main(flavor = "multi_thread")]
 //! async fn main() -> Result<(), S3ExtError> {
-//!     let bucket = format!("test-s3-ext-iter-module-example-{}", rand::thread_rng().next_u64());
+//!     let bucket = format!("s3-ext-iter-module-example-{}", rand::thread_rng().next_u64());
 //!
 //!     // setup client
 //!     let client = if let Ok(endpoint) = env::var("S3_ENDPOINT") {

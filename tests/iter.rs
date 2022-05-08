@@ -6,9 +6,11 @@ use rusoto_s3::GetObjectOutput;
 use s3_ext::{error::S3ExtResult, S3Ext};
 use tokio::io::AsyncReadExt;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_objects() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let mut keys = Vec::new();
 
     for i in (0..2003).map(|i| format!("{:04}", i)) {
@@ -26,9 +28,11 @@ async fn stream_objects() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_objects_with_prefix() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let mut keys = Vec::new();
 
     for i in (0..1005).map(|i| format!("a/{:04}", i)) {
@@ -36,6 +40,7 @@ async fn stream_objects_with_prefix() {
         keys.push(i);
     }
     put_object(&client, &bucket, "b/1234", vec![]).await;
+    keys.push("b/1234".into());
 
     let mut iter = client.stream_objects_with_prefix(&bucket, "a/");
     for i in (0..1005).map(|i| format!("a/{:04}", i)) {
@@ -47,9 +52,11 @@ async fn stream_objects_with_prefix() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_objects_nth() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
+
     let mut keys = Vec::new();
 
     for i in (1..2081).map(|i| format!("{:04}", i)) {
@@ -87,9 +94,10 @@ async fn stream_objects_nth() {
     assert_eq!(obj.key.unwrap(), "2031");
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_objects_count() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     assert_eq!(
         client
@@ -138,9 +146,10 @@ async fn stream_objects_count() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_objects_last() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     assert!(client
         .stream_objects(&bucket)
@@ -169,6 +178,7 @@ async fn stream_objects_last() {
         "0999"
     );
     put_object(&client, &bucket, "1000", vec![]).await;
+    keys.push("1000".into());
     assert_eq!(
         client
             .stream_objects(&bucket)
@@ -182,6 +192,7 @@ async fn stream_objects_last() {
         "1000"
     );
     put_object(&client, &bucket, "1001", vec![]).await;
+    keys.push("1001".into());
     assert_eq!(
         client
             .stream_objects(&bucket)
@@ -198,9 +209,10 @@ async fn stream_objects_last() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_get_objects() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     let mut keys = Vec::new();
     for i in (1..1004).map(|i| format!("{:04}", i)) {
@@ -237,9 +249,10 @@ async fn stream_get_objects() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_get_objects_nth() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     let mut keys = Vec::new();
     for i in (1..1003).map(|i| format!("{:04}", i)) {
@@ -258,9 +271,10 @@ async fn stream_get_objects_nth() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_get_objects_with_prefix_count() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     let mut keys = vec!["a/0020".to_string(), "c/0030".to_string()];
     put_object(&client, &bucket, "a/0020", vec![]).await;
@@ -294,9 +308,10 @@ async fn stream_get_objects_with_prefix_count() {
     common::delete_test_bucket(&client, &bucket, &keys).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn stream_get_objects_last() {
-    let (client, bucket) = create_test_bucket().await;
+    let client = get_client();
+    let bucket = common::create_test_bucket(&client).await;
 
     assert!(client
         .stream_get_objects(&bucket)
